@@ -6,8 +6,10 @@ structure InternalRepresentation = struct
                  | VClosure of string * expr * (string * value) list
                  | VRecClosure of string * string * expr * (string * value) list
 
-  and expr = EVal of value
-           | EFun of string * expr
+  and main_expr = MExpr of expr
+                | MTerm of value
+
+  and expr = EFun of string * expr
            | EIf of expr * expr * expr
            | ELet of string * expr * expr
            | ELetFun of string * string * expr * expr
@@ -25,8 +27,7 @@ structure InternalRepresentation = struct
       | strV (VBool false) = "VBool false"
       | strV (VClosure (n,e,_)) = $ ["VClosure (", n, ",", strE e, ")"]
       | strV (VRecClosure (f,n,e,_)) = $ ["VRecClosure (", f, ",",n, ",", strE e, ")"]
-    and strE (EVal v) = strCon "EVal" strV [v]
-      | strE (EFun (n,e)) = $ ["EFun (", n, ",", strE e, ")"]
+    and strE (EFun (n,e)) = $ ["EFun (", n, ",", strE e, ")"]
       | strE (EIf (e1,e2,e3)) = strCon "EIf" strE [e1,e2,e3]
       | strE (ELet (n,e1,e2)) = $ ["ELet (",strS n,",",strE e1,",",strE e2,")"]
       | strE (ELetFun (n,p,e1,e2)) = $ ["ELetFun (",strS n,",",
@@ -46,6 +47,9 @@ structure InternalRepresentation = struct
         String.concat ["<function (", n, ",", stringOfExpr e,")>"]
     | stringOfValue (VRecClosure (f,n,e,_)) =
         String.concat ["<function ", f, " (", n, ",", stringOfExpr e,")>"]
+
+  fun stringOfMExpr (MExpr e) = stringOfExpr e
+    | stringOfMExpr (MTerm t) = stringOfValue t
 
   fun printValue v = (print (stringOfValue v);
                       print "\n")
