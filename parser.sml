@@ -252,7 +252,7 @@ structure Parser =  struct
             | SOME ts =>
               (case parse_eterm ts
                 of NONE => NONE
-                 | SOME (e2,ts) => SOME (I.EApp (I.EApp (I.EIdent "=", e1), e2),ts))))
+                 | SOME (e2,ts) => SOME (I.MExpr (I.EApp (I.MExpr (I.EApp (I.MExpr (I.EIdent "=", e1)), e2))),ts))))
 
   and parse_expr_ETERM ts = parse_eterm ts
 
@@ -270,7 +270,7 @@ structure Parser =  struct
             | SOME ts =>
               (case parse_term ts
                 of NONE => NONE
-                 | SOME (e2,ts) => SOME (I.EApp (I.EApp (I.EIdent "+", e1), e2),ts))))
+                 | SOME (e2,ts) => SOME (I.MExpr (I.EApp (I.MExpr (I.EApp (I.MExpr (I.EIdent "+", e1)), e2)),ts)))))
 
   and parse_eterm_TERM ts = parse_term ts
 
@@ -280,7 +280,7 @@ structure Parser =  struct
   and parse_term_ATERM_LIST ts = let
     fun convert [] = parseError "empty list of aterms"
       | convert [at] = at
-      | convert (at1::at2::ats) = convert ((I.EApp (at1,at2))::ats)
+      | convert (at1::at2::ats) = convert ((I.MExpr (I.EApp (at1,at2)))::ats)
   in
     (case parse_aterm ts
        of NONE => NONE
@@ -320,22 +320,22 @@ structure Parser =  struct
   and parse_aterm_INT ts =
     (case expect_INT ts
       of NONE => NONE
-       | SOME (i,ts) => SOME (I.EVal (I.VInt i),ts))
+       | SOME (i,ts) => SOME (I.MTerm (I.VInt i),ts))
 
   and parse_aterm_TRUE ts =
     (case expect_TRUE ts
       of NONE => NONE
-       | SOME ts => SOME (I.EVal (I.VBool true),ts))
+       | SOME ts => SOME (I.MTerm (I.VBool true),ts))
 
   and parse_aterm_FALSE ts =
     (case expect_FALSE ts
       of NONE => NONE
-       | SOME ts => SOME (I.EVal (I.VBool false),ts))
+       | SOME ts => SOME (I.MTerm (I.VBool false),ts))
 
   and parse_aterm_SYM ts =
     (case expect_SYM ts
       of NONE => NONE
-       | SOME (s,ts) => SOME (I.EIdent s,ts))
+       | SOME (s,ts) => SOME (I.MExpr (I.EIdent s),ts))
 
   and parse_aterm_FUN ts =
     (case expect_BACKSLASH ts
@@ -349,7 +349,7 @@ structure Parser =  struct
                  | SOME ts =>
                    (case parse_expr ts
                      of NONE => NONE
-                      | SOME (e,ts) => SOME (I.EFun (s,e), ts)))))
+                      | SOME (e,ts) => SOME (I.MExpr (I.EFun (s,e), ts))))))
 
   and parse_aterm_PARENS ts =
     (case expect_LPAREN ts
@@ -380,7 +380,7 @@ structure Parser =  struct
                            | SOME ts =>
                              (case parse_expr ts
                                of NONE => NONE
-                                | SOME (e3,ts) => SOME (I.EIf (e1,e2,e3),ts)))))))
+                                | SOME (e3,ts) => SOME (I.MExpr (I.EIf (e1,e2,e3),ts))))))))
 
   and parse_aterm_LET ts =
     (case expect_LET ts
@@ -400,7 +400,7 @@ structure Parser =  struct
                            | SOME ts =>
                              (case parse_expr ts
                                of NONE => NONE
-                                | SOME (e2,ts) => SOME (I.ELet (s,e1,e2),ts)))))))
+                                | SOME (e2,ts) => SOME (I.MExpr (I.ELet (s,e1,e2),ts))))))))
 
   and parse_aterm_LET_FUN ts =
     (case expect_LET ts
@@ -424,7 +424,7 @@ structure Parser =  struct
                                   (case parse_expr ts
                                     of NONE => NONE
                                      | SOME (e2,ts) =>
-                                         SOME (I.ELetFun (s,param,e1,e2),ts))))))))
+                                         SOME (I.MExpr (I.ELetFun (s,param,e1,e2),ts)))))))))
 
 
   and parse_aterm_list ts =
@@ -448,6 +448,5 @@ structure Parser =  struct
         of SOME (e,[]) => e
          | SOME (_,_)  => parseError "leftover characters past parsed expression"
          | NONE => parseError "cannot parse input")
-
 
 end
