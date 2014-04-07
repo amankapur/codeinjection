@@ -3,19 +3,19 @@ structure InternalRepresentation = struct
 
   datatype value = VInt of int
                  | VBool of bool
-                 | VClosure of string * expr * (string * value) list
-                 | VRecClosure of string * string * expr * (string * value) list
+                 | VClosure of string * main_expr * (string * main_expr) list
+                 | VRecClosure of string * string * main_expr * (string * main_expr) list
+
+  and expr = EFun of string * main_expr
+           | EIf of main_expr * main_expr * main_expr
+           | ELet of string * main_expr * main_expr
+           | ELetFun of string * string * main_expr * main_expr
+           | EIdent of string
+           | EApp of main_expr * main_expr
+           | EPrimCall2 of (value -> value -> value) * main_expr * main_expr
 
   and main_expr = MExpr of expr
                 | MTerm of value
-
-  and expr = EFun of string * expr
-           | EIf of expr * expr * expr
-           | ELet of string * expr * expr
-           | ELetFun of string * string * expr * expr
-           | EIdent of string
-           | EApp of expr * expr
-           | EPrimCall2 of (value -> value -> value) * expr * expr
 
   fun stringOfExpr e = let
     fun $ ss = String.concat ss
@@ -25,31 +25,31 @@ structure InternalRepresentation = struct
     fun strV (VInt i) = $ ["VInt ",Int.toString i]
       | strV (VBool true) = "VBool true"
       | strV (VBool false) = "VBool false"
-      | strV (VClosure (n,e,_)) = $ ["VClosure (", n, ",", strE e, ")"]
-      | strV (VRecClosure (f,n,e,_)) = $ ["VRecClosure (", f, ",",n, ",", strE e, ")"]
-    and strE (EFun (n,e)) = $ ["EFun (", n, ",", strE e, ")"]
-      | strE (EIf (e1,e2,e3)) = strCon "EIf" strE [e1,e2,e3]
-      | strE (ELet (n,e1,e2)) = $ ["ELet (",strS n,",",strE e1,",",strE e2,")"]
+      | strV (VClosure (n,e,_)) = $ ["VClosure (", n, ",", stringOfMExpr e, ")"]
+      | strV (VRecClosure (f,n,e,_)) = $ ["VRecClosure (", f, ",",n, ",", stringOfMExpr e, ")"]
+    and strE (EFun (n,e)) = $ ["EFun (", n, ",", stringOfMExpr e, ")"]
+      | strE (EIf (e1,e2,e3)) = strCon "EIf" stringOfMExpr [e1,e2,e3]
+      | strE (ELet (n,e1,e2)) = $ ["ELet (",strS n,",",stringOfMExpr e1,",",stringOfMExpr e2,")"]
       | strE (ELetFun (n,p,e1,e2)) = $ ["ELetFun (",strS n,",",
                                         strS p, ",",
-                                        strE e1,",",strE e2,")"]
+                                        stringOfMExpr e1,",",stringOfMExpr e2,")"]
       | strE (EIdent n) = $ ["EIdent ", strS n]
-      | strE (EApp (e1,e2)) = strCon "EApp" strE [e1,e2]
-      | strE (EPrimCall2 (f,e1,e2)) = strCon "EPrimCall2" strE [e1,e2]
-  in
-    strE e
-  end
+      | strE (EApp (e1,e2)) = strCon "EApp" stringOfMExpr [e1,e2]
+      | strE (EPrimCall2 (f,e1,e2)) = strCon "EPrimCall2" stringOfMExpr [e1,e2]
+    in
+      strE e
+    end
 
-  fun stringOfValue (VInt i) = Int.toString i
+  and stringOfMExpr (MExpr e) = stringOfExpr e
+    | stringOfMExpr (MTerm t) = stringOfValue t
+
+  and stringOfValue (VInt i) = Int.toString i
     | stringOfValue (VBool true) = "true"
     | stringOfValue (VBool false) = "false"
     | stringOfValue (VClosure (n,e,_)) =
-        String.concat ["<function (", n, ",", stringOfExpr e,")>"]
+        String.concat ["<function (", n, ",", stringOfMExpr e,")>"]
     | stringOfValue (VRecClosure (f,n,e,_)) =
-        String.concat ["<function ", f, " (", n, ",", stringOfExpr e,")>"]
-
-  fun stringOfMExpr (MExpr e) = stringOfExpr e
-    | stringOfMExpr (MTerm t) = stringOfValue t
+        String.concat ["<function ", f, " (", n, ",", stringOfMExpr e,")>"]
 
   fun printValue v = (print (stringOfValue v);
                       print "\n")
