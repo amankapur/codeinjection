@@ -10,7 +10,7 @@ structure Evaluator = struct
   fun evalError msg = raise Evaluation msg
 
 
-  (* 
+  (*
    *   Primitive operations
    *)
 
@@ -22,17 +22,17 @@ structure Evaluator = struct
     | primEq _ _ = evalError "primEq"
 
 
-			 
+
   fun lookup (name:string) [] = evalError ("failed lookup for "^name)
-    | lookup name ((n,v)::env) = 
-        if (n = name) then 
-	  v
-	else lookup name env 
+    | lookup name ((n,v)::env) =
+        if (n = name) then
+          v
+        else lookup name env
 
 
   (*
    *   Evaluation functions
-   * 
+   *
    *)
 
 
@@ -44,19 +44,19 @@ structure Evaluator = struct
     | eval env (I.EIdent n) = lookup n env
     | eval env (I.EApp (e1,e2)) = evalApp env (eval env e1) (eval env e2)
     | eval env (I.EPrimCall2 (f,e1,e2)) = f (eval env e1) (eval env e2)
-      
+
   and evalApp _ (I.VClosure (n,body,env)) v = eval ((n,v)::env) body
     | evalApp _ (I.VRecClosure (f,n,body,env)) v = let
-	  val new_env = [(f,I.VRecClosure (f,n,body,env)),(n,v)]@env
-      in 
-	  eval new_env body
+          val new_env = [(f,I.VRecClosure (f,n,body,env)),(n,v)]@env
+      in
+          eval new_env body
       end
     | evalApp _ _ _ = evalError "cannot apply non-functional value"
 
   and evalIf env (I.VBool true) f g = eval env f
     | evalIf env (I.VBool false) f g = eval env g
     | evalIf _ _ _ _ = evalError "evalIf"
-		       
+
   and evalLet env id v body = eval ((id,v)::env) body
 
   and evalLetFun env id param expr body = let
@@ -66,23 +66,23 @@ structure Evaluator = struct
   end
 
 
-  (* 
+  (*
    *   List of primitives (already in a form suitable for the environment)
    *)
 
   val primitives =
-      [("+", I.VClosure ("a", 
-			 I.EFun ("b", 
-				 I.EPrimCall2 (primPlus,
-					       I.EIdent "a",
-					       I.EIdent "b")),
-			 [])),
+      [("+", I.VClosure ("a",
+                         I.EFun ("b",
+                                 I.EPrimCall2 (primPlus,
+                                               I.EIdent "a",
+                                               I.EIdent "b")),
+                         [])),
        ("=", I.VClosure ("a",
-			 I.EFun ("b",
-				 I.EPrimCall2 (primEq,
-					       I.EIdent "a",
-					       I.EIdent "b")),
-			 []))]
-  
-				 
+                         I.EFun ("b",
+                                 I.EPrimCall2 (primEq,
+                                               I.EIdent "a",
+                                               I.EIdent "b")),
+                         []))]
+
+
 end

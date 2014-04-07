@@ -2,17 +2,17 @@
 structure InternalRepresentation = struct
 
   datatype value = VInt of int
-  	         | VBool of bool
-		 | VClosure of string * expr * (string * value) list
-		 | VRecClosure of string * string * expr * (string * value) list
-			    
+                 | VBool of bool
+                 | VClosure of string * expr * (string * value) list
+                 | VRecClosure of string * string * expr * (string * value) list
+
   and expr = EVal of value
-	   | EFun of string * expr
-	   | EIf of expr * expr * expr
-	   | ELet of string * expr * expr
-	   | ELetFun of string * string * expr * expr
-	   | EIdent of string
-	   | EApp of expr * expr
+           | EFun of string * expr
+           | EIf of expr * expr * expr
+           | ELet of string * expr * expr
+           | ELetFun of string * string * expr * expr
+           | EIdent of string
+           | EApp of expr * expr
            | EPrimCall2 of (value -> value -> value) * expr * expr
 
   fun stringOfExpr e = let
@@ -30,8 +30,8 @@ structure InternalRepresentation = struct
       | strE (EIf (e1,e2,e3)) = strCon "EIf" strE [e1,e2,e3]
       | strE (ELet (n,e1,e2)) = $ ["ELet (",strS n,",",strE e1,",",strE e2,")"]
       | strE (ELetFun (n,p,e1,e2)) = $ ["ELetFun (",strS n,",",
-					strS p, ",",
-					strE e1,",",strE e2,")"]
+                                        strS p, ",",
+                                        strE e1,",",strE e2,")"]
       | strE (EIdent n) = $ ["EIdent ", strS n]
       | strE (EApp (e1,e2)) = strCon "EApp" strE [e1,e2]
       | strE (EPrimCall2 (f,e1,e2)) = strCon "EPrimCall2" strE [e1,e2]
@@ -42,12 +42,12 @@ structure InternalRepresentation = struct
   fun stringOfValue (VInt i) = Int.toString i
     | stringOfValue (VBool true) = "true"
     | stringOfValue (VBool false) = "false"
-    | stringOfValue (VClosure (n,e,_)) = 
+    | stringOfValue (VClosure (n,e,_)) =
         String.concat ["<function (", n, ",", stringOfExpr e,")>"]
-    | stringOfValue (VRecClosure (f,n,e,_)) = 
+    | stringOfValue (VRecClosure (f,n,e,_)) =
         String.concat ["<function ", f, " (", n, ",", stringOfExpr e,")>"]
 
   fun printValue v = (print (stringOfValue v);
-		      print "\n")
-		       
+                      print "\n")
+
 end
