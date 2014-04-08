@@ -18,7 +18,7 @@ structure Shell = struct
         (let val ts = P.lexString str
              val _ = pr (["  Tokens ="] @ (map P.stringOfToken ts))
              val expr = P.parse ts
-             val _ = pr ["  IR = ", I.stringOfExpr (expr)]
+             val _ = pr ["  IR = ", I.stringOfMExpr (expr)]
              val v = E.eval fenv expr
              val _ = pr [I.stringOfMExpr v]
          in

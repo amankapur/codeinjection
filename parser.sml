@@ -252,7 +252,7 @@ structure Parser =  struct
             | SOME ts =>
               (case parse_eterm ts
                 of NONE => NONE
-                 | SOME (e2,ts) => SOME (I.MExpr (I.EApp (I.MExpr (I.EApp (I.MExpr (I.EIdent "=")), e1)), e2) , ts) )))
+                 | SOME (e2,ts) => SOME  (I.MExpr (I.EApp ((I.MExpr (I.EApp ((I.MExpr (I.EIdent "=")), e1))), e2)) , ts) )))
 
   and parse_expr_ETERM ts = parse_eterm ts
 
@@ -270,7 +270,7 @@ structure Parser =  struct
             | SOME ts =>
               (case parse_term ts
                 of NONE => NONE
-                 | SOME (e2,ts) => SOME (I.MExpr (I.EApp (I.MExpr (I.EApp (I.MExpr (I.EIdent "+")), e1)), e2) ,ts) )))
+                 | SOME (e2,ts) => SOME  ( I.MExpr (I.EApp ((I.MExpr (I.EApp ((I.MExpr (I.EIdent "+")), e1))), e2)) ,ts) )))
 
   and parse_eterm_TERM ts = parse_term ts
 
