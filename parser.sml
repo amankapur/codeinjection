@@ -252,7 +252,7 @@ structure Parser =  struct
             | SOME ts =>
               (case parse_eterm ts
                 of NONE => NONE
-                 | SOME (e2,ts) => SOME (I.MExpr (I.EApp (I.MExpr (I.EApp (I.MExpr (I.EIdent "=", e1)), e2))),ts))))
+                 | SOME (e2,ts) => SOME (I.MExpr (I.EApp (I.MExpr (I.EApp (I.MExpr (I.EIdent "=")), e1)), e2) , ts) )))
 
   and parse_expr_ETERM ts = parse_eterm ts
 
@@ -270,7 +270,7 @@ structure Parser =  struct
             | SOME ts =>
               (case parse_term ts
                 of NONE => NONE
-                 | SOME (e2,ts) => SOME (I.MExpr (I.EApp (I.MExpr (I.EApp (I.MExpr (I.EIdent "+", e1)), e2)),ts)))))
+                 | SOME (e2,ts) => SOME (I.MExpr (I.EApp (I.MExpr (I.EApp (I.MExpr (I.EIdent "+")), e1)), e2) ,ts) )))
 
   and parse_eterm_TERM ts = parse_term ts
 
@@ -280,7 +280,7 @@ structure Parser =  struct
   and parse_term_ATERM_LIST ts = let
     fun convert [] = parseError "empty list of aterms"
       | convert [at] = at
-      | convert (at1::at2::ats) = convert ((I.MExpr (I.EApp (at1,at2)))::ats)
+      | convert (at1::at2::ats) = convert ( (I.MExpr (I.EApp (at1,at2) ))::ats)
   in
     (case parse_aterm ts
        of NONE => NONE
@@ -349,7 +349,7 @@ structure Parser =  struct
                  | SOME ts =>
                    (case parse_expr ts
                      of NONE => NONE
-                      | SOME (e,ts) => SOME (I.MExpr (I.EFun (s,e), ts))))))
+                      | SOME (e,ts) => SOME (I.MExpr (I.EFun (s,e)), ts) ))))
 
   and parse_aterm_PARENS ts =
     (case expect_LPAREN ts
@@ -380,7 +380,7 @@ structure Parser =  struct
                            | SOME ts =>
                              (case parse_expr ts
                                of NONE => NONE
-                                | SOME (e3,ts) => SOME (I.MExpr (I.EIf (e1,e2,e3),ts))))))))
+                                | SOME (e3,ts) => SOME (I.MExpr (I.EIf (e1,e2,e3)),ts) ))))))
 
   and parse_aterm_LET ts =
     (case expect_LET ts
@@ -400,7 +400,7 @@ structure Parser =  struct
                            | SOME ts =>
                              (case parse_expr ts
                                of NONE => NONE
-                                | SOME (e2,ts) => SOME (I.MExpr (I.ELet (s,e1,e2),ts))))))))
+                                | SOME (e2,ts) => SOME (I.MExpr (I.ELet (s,e1,e2)),ts) ))))))
 
   and parse_aterm_LET_FUN ts =
     (case expect_LET ts
@@ -424,7 +424,7 @@ structure Parser =  struct
                                   (case parse_expr ts
                                     of NONE => NONE
                                      | SOME (e2,ts) =>
-                                         SOME (I.MExpr (I.ELetFun (s,param,e1,e2),ts)))))))))
+                                         SOME (I.MExpr (I.ELetFun (s,param,e1,e2)),ts) )))))))
 
 
   and parse_aterm_list ts =

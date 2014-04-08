@@ -20,7 +20,7 @@ structure Shell = struct
              val expr = P.parse ts
              val _ = pr ["  IR = ", I.stringOfExpr (expr)]
              val v = E.eval fenv expr
-             val _ = pr [I.stringOfValue v]
+             val _ = pr [I.stringOfMExpr v]
          in
            read fenv
          end
