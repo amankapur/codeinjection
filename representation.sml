@@ -40,7 +40,7 @@ structure InternalRepresentation = struct
       strE e
     end
 
-  and stringOfMExpr (MExpr e) = stringOfExpr e
+  and stringOfMExpr (MExpr e) = String.concat [" MExpr ( ", stringOfExpr e, " ) "]
     | stringOfMExpr (MTerm t) = stringOfValue t
 
   and stringOfValue (VInt i) = Int.toString i

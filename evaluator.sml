@@ -43,10 +43,12 @@ structure Evaluator = struct
 
   and (*eval env (I.MExpr (I.EFun (n,e))) = 1*)
     (*| eval env (I.MExpr (I.EIf (e,f,g))) = 1*)
-    (*|*) eval env (I.MExpr (I.ELet (name,e,f))) = if (isTerminal e) then evalLet env name e f else (I.MExpr (I.ELet (name, (eval env e), f)))
-    (*| eval env (I.MExpr (I.ELetFun (name,param,e,f))) = 1
-    | eval env (I.MExpr (I.EIdent n)) = 1
-    | eval env (I.MExpr (I.EApp (e1,e2))) = 1
+    (*|*) 
+    eval env (I.MTerm t) = I.MTerm t
+    | eval env (I.MExpr (I.ELet (name,e,f))) = if (isTerminal e) then evalLet env name e f else (I.MExpr (I.ELet (name, (eval env e), f)))
+    (*| eval env (I.MExpr (I.ELetFun (name,param,e,f))) = 1*)
+    | eval env (I.MExpr (I.EIdent n)) = lookup n env
+    (*| eval env (I.MExpr (I.EApp (e1,e2))) = 1
     | eval env (I.MExpr (I.EPrimCall2 (f,e1,e2))) = 1*)
     | eval env _ = evalError "Nothing works!"
 
