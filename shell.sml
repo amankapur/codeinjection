@@ -19,8 +19,9 @@ structure Shell = struct
              val _ = pr (["  Tokens ="] @ (map P.stringOfToken ts))
              val expr = P.parse ts
              val _ = pr ["  IR = ", I.stringOfMExpr (expr)]
-             val v = E.eval fenv expr
-             val _ = pr [I.stringOfMExpr v]
+             val v = E.loop (expr, fenv) NONE
+             (*val _ = pr [I.stringOfMExpr v]*)
+             val _ = pr ["\n"]
          in
            read fenv
          end
@@ -28,7 +29,7 @@ structure Shell = struct
               | E.Evaluation msg => (pr ["Evaluation error:", msg]; read fenv))
   in
     print "Type . by itself to quit\n";
-    read fenv
+    read (fenv@(E.primitives))
   end
 
 end

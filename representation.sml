@@ -40,8 +40,8 @@ structure InternalRepresentation = struct
       strE e
     end
 
-  and stringOfMExpr (MExpr e) = String.concat [" MExpr ( ", stringOfExpr e, " ) "]
-    | stringOfMExpr (MTerm t) = stringOfValue t
+  and stringOfMExpr (MExpr e) = String.concat [" MExpr (", stringOfExpr e, ") "]
+    | stringOfMExpr (MTerm t) = String.concat [" {MTerm: ", stringOfValue t, "} "]
 
   and stringOfValue (VInt i) = Int.toString i
     | stringOfValue (VBool true) = "true"
