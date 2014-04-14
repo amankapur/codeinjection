@@ -41,7 +41,7 @@ structure Evaluator = struct
   (*fun evalM env (I.MExpr e) = eval env (I.MExpr e)
     | evalM env (I.MTerm t) = (I.MTerm t)*)
 
-  and eval (I.MTerm t, env) = ((I.MTerm t), env)
+(*  and eval (I.MTerm t, env) = ((I.MTerm t), env)
     | eval (I.MExpr (I.EIf (e,f,g)), env) = if (isTerminal e) then evalIf env e f g else let val (new_exp, new_env) = (eval (e, env)) in ((I.MExpr (I.EIf (new_exp, f, g))), new_env) end
     | eval (I.MExpr (I.ELet (name,e,f)), env) = if (isTerminal e) then evalLet env name e f else let val (new_exp, new_env) = (eval (e, env)) in ((I.MExpr (I.ELet (name, new_exp, f))), new_env) end
     | eval (I.MExpr (I.EIdent n), env) = ((lookup n env), env)
@@ -51,17 +51,20 @@ structure Evaluator = struct
     | eval (I.MExpr (I.EApp (e1,e2)), env) = (case (isTerminal e2) 
                                                  of true => (case (isTerminal e1)
                                                     of true => (printEnv env "base case" ; (evalApp env e1 e2))
-                                                    | false => let val (new_exp, new_env) = (eval (e1, env)) in ((I.MExpr (I.EApp (new_exp, e2))), new_env) end)
-                                                 | false => let val (new_exp, new_env) = (eval (e2, env)) in ((I.MExpr (I.EApp (e1, new_exp))), new_env) end)
+                                                    | false => let val (new_exp, new_env) = (eval (e1, env)) in ((I.MExpr (I.EApp (new_exp, e2))), env) end)
+                                                 | false => let val (new_exp, new_env) = (eval (e2, env)) in ((I.MExpr (I.EApp (e1, new_exp))), env) end)
 
 
     | eval (I.MExpr (I.EPrimCall2 (f,e1,e2)), env) = (case e1
-                                                         of I.MTerm t1 => (case e2
-                                                                      of I.MTerm t2 => (printEnv env "primcall base case"; ((I.MTerm (f t1 t2)), env))
-                                                                      | e2 => let val (new_exp, new_env) = (eval (e2, env)) in (I.MExpr 
-                                                                        ((I.EPrimCall2 (f, e1
-                                                                                      , new_exp))), new_env) end)
+                                                         of I.MTerm t1 => 
+                                                          (case e2
+                                                            of I.MTerm t2 => (printEnv env "primcall base case"; ((I.MTerm (f t1 t2)), env))
+                                                            | e2 => let val (new_exp, new_env) = (eval (e2, env)) in (I.MExpr 
+                                                              ((I.EPrimCall2 (f, e1, new_exp))), new_env) end)
                                                          | _ => let val (new_exp, new_env) = (eval (e1, env)) in ((I.MExpr (I.EPrimCall2 (f, new_exp, e2))), new_env) end)
+*)
+
+  and eval _ = evalError "ERROr: Not implemented"
 
   (*and eval x = eval x*)
 
@@ -88,7 +91,7 @@ structure Evaluator = struct
 *)
 
 
-  and evalApp oldEnv (I.MTerm (I.VClosure (n,body,env))) v = let val new_env = ((n,v)::env) in (let val (new_exp, new_new_env) = (eval (body, new_env)) in (printEnv env "pre eval"; printEnv new_env " new env" ; printEnv new_new_env "new new env"; (new_exp, new_new_env)) end) end
+  and evalApp oldEnv (I.MTerm (I.VClosure (n,body,env))) v = let val new_env = ((n,v)::env) in (let val (new_exp, new_new_env) = (eval (body, new_env)) in (printEnv env "pre eval"; printEnv new_env " new env" ; printEnv new_new_env "new new env"; (new_exp, oldEnv)) end) end
     | evalApp _ (I.MTerm (I.VRecClosure (f,n,body,env))) v = let
           val new_env = [(f,(I.MTerm (I.VRecClosure (f,n,body,env)))),(n,v)]@env
       in
@@ -117,16 +120,16 @@ structure Evaluator = struct
 
   val primitives =   
       [("+", (I.MTerm (I.VClosure ("a",
-                                     (I.MExpr (I.EFun ("b",
-                                                       (I.MExpr (I.EPrimCall2 (primPlus,
-                                                                               (I.MExpr (I.EIdent "a")),
-                                                                               (I.MExpr (I.EIdent "b")))))))),
+                                     (I.MExpr ((I.EFun ("b",
+                                                       (I.MExpr ((I.EPrimCall2 (primPlus,
+                                                                               (I.MExpr ((I.EIdent "a"), [])),
+                                                                               (I.MExpr ((I.EIdent "b"), [])))), [])))), [])),
                                      [])))),
         ("=", (I.MTerm (I.VClosure ("a",
-                                     (I.MExpr (I.EFun ("b",
-                                                       (I.MExpr (I.EPrimCall2 (primEq,
-                                                                               (I.MExpr (I.EIdent "a")),
-                                                                               (I.MExpr (I.EIdent "b")))))))),
+                                     (I.MExpr ((I.EFun ("b",
+                                                       (I.MExpr ((I.EPrimCall2 (primEq,
+                                                                               (I.MExpr ((I.EIdent "a"), [])),
+                                                                               (I.MExpr ((I.EIdent "b"), [])))), [])))), [])),
                                      []))))]
 
 
