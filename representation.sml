@@ -14,7 +14,7 @@ structure InternalRepresentation = struct
            | EApp of main_expr * main_expr
            | EPrimCall2 of (value -> value -> value) * main_expr * main_expr
 
-  and main_expr = MExpr of expr
+  and main_expr = MExpr of expr * (string * main_expr) list 
                 | MTerm of value
 
   fun stringOfExpr e = let
@@ -40,7 +40,10 @@ structure InternalRepresentation = struct
       strE e
     end
 
-  and stringOfMExpr (MExpr e) = String.concat [" MExpr (", stringOfExpr e, ") "]
+  and stringOfEnvTup (n,v) = String.concat ["",n, " -> ", stringOfMExpr v, ", "]
+
+  and (*stringOfMExpr (MExpr (e, env)) = String.concat [" MExpr (", stringOfExpr e, " ENV: [", String.concat (List.map stringOfEnvTup env), "] ) "]*)
+    stringOfMExpr (MExpr (e, env)) = String.concat [" MExpr (", stringOfExpr e, ") "]
     | stringOfMExpr (MTerm t) = String.concat [" {MTerm: ", stringOfValue t, "} "]
 
   and stringOfValue (VInt i) = Int.toString i

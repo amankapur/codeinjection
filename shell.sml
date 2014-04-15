@@ -19,7 +19,7 @@ structure Shell = struct
              val _ = pr (["  Tokens ="] @ (map P.stringOfToken ts))
              val expr = P.parse ts
              val _ = pr ["  IR = ", I.stringOfMExpr (expr)]
-             val v = E.loop (expr, fenv) NONE
+             val v = (E.shellLoop expr fenv)
              (*val _ = pr [I.stringOfMExpr v]*)
              val _ = pr ["\n"]
          in
