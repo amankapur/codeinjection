@@ -84,11 +84,14 @@ structure Evaluator = struct
       if (isTerminal e1) 
       then
         (if (isTerminal e2)
-        then (f e1 e2)
-        else (I.MExpr (I.EPrimCall2 (e1, eval (appendToE e2 env)), env)))
-      else (I.MExpr (I.EPrimCall2 (eval (appendToE e1 env), e2), env))
-
-    | eval _ = evalError "ERROr: Not implemented"
+        then (let val I.MTerm t1 = e1
+                  val I.MTerm t2 = e2
+              in
+                I.MTerm (f t1 t2)
+              end)
+        else (I.MExpr (I.EPrimCall2 (f, e1, eval (appendToE e2 env)), env)))
+      else (I.MExpr (I.EPrimCall2 (f, eval (appendToE e1 env), e2), env))
+    | eval (I.MExpr (I.EFun (name, body), env)) = I.MTerm (I.VClosure (name, body, env))
 
 
   and appendToE (I.MExpr (e, env)) newEnv = (I.MExpr (e, env@newEnv))
@@ -135,7 +138,7 @@ structure Evaluator = struct
 
   and evalApp (I.MTerm (I.VClosure (n,body,env))) v = eval (appendToE body ((n,v)::env))
     | evalApp (I.MTerm (I.VRecClosure (funcName,n,body,env))) v = let
-      val new_env = [(funcName, I.VRecClosure (funcName,n,body,env)),(n,v)]@env
+      val new_env = [(funcName, (I.MTerm (I.VRecClosure (funcName,n,body,env)))),(n,v)]@env
       in 
         eval (appendToE body new_env)
       end
@@ -166,13 +169,17 @@ structure Evaluator = struct
                                      (I.MExpr ((I.EFun ("b",
                                                        (I.MExpr ((I.EPrimCall2 (primPlus,
                                                                                (I.MExpr ((I.EIdent "a"), [])),
-                                                                               (I.MExpr ((I.EIdent "b"), [])))), [])))), [])),
+                                                                               (I.MExpr ((I.EIdent "b"), [])))), []))
+                                                       )),
+                                               [])),
                                      [])))),
         ("=", (I.MTerm (I.VClosure ("a",
                                      (I.MExpr ((I.EFun ("b",
                                                        (I.MExpr ((I.EPrimCall2 (primEq,
                                                                                (I.MExpr ((I.EIdent "a"), [])),
-                                                                               (I.MExpr ((I.EIdent "b"), [])))), [])))), [])),
+                                                                               (I.MExpr ((I.EIdent "b"), [])))), []))
+                                                       )),
+                                                [])),
                                      []))))]
 
 
