@@ -40,7 +40,10 @@ structure InternalRepresentation = struct
       strE e
     end
 
-  and stringOfMExpr (MExpr (e, [])) = String.concat [" MExpr (", stringOfExpr e, ") "]
+  and stringOfEnvTup (n,v) = String.concat ["",n, " -> ", stringOfMExpr v, ", "]
+
+  and (*stringOfMExpr (MExpr (e, env)) = String.concat [" MExpr (", stringOfExpr e, " ENV: [", String.concat (List.map stringOfEnvTup env), "] ) "]*)
+    stringOfMExpr (MExpr (e, env)) = String.concat [" MExpr (", stringOfExpr e, ") "]
     | stringOfMExpr (MTerm t) = String.concat [" {MTerm: ", stringOfValue t, "} "]
 
   and stringOfValue (VInt i) = Int.toString i
