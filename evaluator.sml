@@ -36,32 +36,7 @@ structure Evaluator = struct
   fun isTerminal (I.MExpr _) = false
     | isTerminal (I.MTerm _) = true
 
-  (*fun evalM env (I.MExpr e) = eval env (I.MExpr e)
-    | evalM env (I.MTerm t) = (I.MTerm t)*)
 
-(*  and eval (I.MTerm t, env) = ((I.MTerm t), env)
-    | eval (I.MExpr (I.EIf (e,f,g)), env) = if (isTerminal e) then evalIf env e f g else let val (new_exp, new_env) = (eval (e, env)) in ((I.MExpr (I.EIf (new_exp, f, g))), new_env) end
-    | eval (I.MExpr (I.ELet (name,e,f)), env) = if (isTerminal e) then evalLet env name e f else let val (new_exp, new_env) = (eval (e, env)) in ((I.MExpr (I.ELet (name, new_exp, f))), new_env) end
-    | eval (I.MExpr (I.EIdent n), env) = ((lookup n env), env)
-    | eval (I.MExpr (I.ELetFun (name,param,expr,body)), env) = if (isTerminal expr) then evalLetFun env name param expr body else let val (new_exp, new_env) = (eval (expr, env)) in ((I.MExpr (I.ELetFun (name, param, new_exp, body))), new_env) end
-    
-    | eval (I.MExpr (I.EFun (name, body)), env) = (I.MTerm (I.VClosure (name, body, env)), env)
-    | eval (I.MExpr (I.EApp (e1,e2)), env) = (case (isTerminal e2) 
-                                                 of true => (case (isTerminal e1)
-                                                    of true => (printEnv env "base case" ; (evalApp env e1 e2))
-                                                    | false => let val (new_exp, new_env) = (eval (e1, env)) in ((I.MExpr (I.EApp (new_exp, e2))), env) end)
-                                                 | false => let val (new_exp, new_env) = (eval (e2, env)) in ((I.MExpr (I.EApp (e1, new_exp))), env) end)
-
-
-    | eval (I.MExpr (I.EPrimCall2 (f,e1,e2)), env) = (case e1
-                                                         of I.MTerm t1 => 
-                                                          (case e2
-                                                            of I.MTerm t2 => (printEnv env "primcall base case"; ((I.MTerm (f t1 t2)), env))
-                                                            | e2 => let val (new_exp, new_env) = (eval (e2, env)) in (I.MExpr 
-                                                              ((I.EPrimCall2 (f, e1, new_exp))), new_env) end)
-                                                         | _ => let val (new_exp, new_env) = (eval (e1, env)) in ((I.MExpr (I.EPrimCall2 (f, new_exp, e2))), new_env) end)
-*)
-  
   fun eval (I.MTerm t)  = I.MTerm t
     | eval (I.MExpr (I.EIf (e, f, g), env)) =
       if (isTerminal e)
@@ -98,43 +73,23 @@ structure Evaluator = struct
     | appendToE (I.MTerm t) _ = (I.MTerm t)
     
 
-
-  (*and eval _ = evalError "ERROr: Not implemented"*)
-
-  (*and eval x = eval x*)
-
-  (*and eval env (I.MTerm t) = I.MTerm t    
-    | eval env (I.MExpr (I.EIf (e,f,g))) = (I.MExpr (I.EIf (e,f,g)))
-    | eval env (I.MExpr (I.ELet (name,e,f))) = (I.MExpr (I.ELet (name,e,f)))
-    | eval env (I.MExpr (I.EIdent n)) = lookup n env
-    | eval env (I.MExpr (I.ELetFun (name,param,expr,body))) = (I.MExpr (I.ELetFun (name,param,expr,body)))    
-    | eval env (I.MExpr (I.EFun (name, body))) = (I.MExpr (I.EFun (name, body)))
-    | eval env (I.MExpr (I.EApp (e1,e2))) = (I.MExpr (I.EApp (e1,e2)))
-    | eval env (I.MExpr (I.EPrimCall2 (f,e1,e2))) = (I.MExpr (I.EPrimCall2 (f,e1,e2)))*)
-
   and shellLoop e env = loop (appendToE e env) NONE    
 
   and loop e _ = (print (String.concat ["e is: ", I.stringOfMExpr e]);
                          (if isTerminal e then e else loop (eval e) (TextIO.inputLine (TextIO.stdIn))))
 
   (*and printEnv env helper = ((print (String.concat ([helper,"\nlookup : \n"]@((List.map stringOfEnvTup env)@["\n"])))); ())*)
+
+
+
 (*  let fun loop e = 
     if terminal (e) then get_value()
-    if is_nice_point(e):
+    if is_nice_point(e): 
       check_changes
       loop(eval e’)
     else loop(eval e)
 *)
-
-
-  (*and evalApp oldEnv (I.MTerm (I.VClosure (n,body,env))) v = let val new_env = ((n,v)::env) in (let val (new_exp, new_new_env) = (eval (body, new_env)) in (printEnv env "pre eval"; printEnv new_env " new env" ; printEnv new_new_env "new new env"; (new_exp, oldEnv)) end) end
-    | evalApp _ (I.MTerm (I.VRecClosure (f,n,body,env))) v = let
-          val new_env = [(f,(I.MTerm (I.VRecClosure (f,n,body,env)))),(n,v)]@env
-      in
-        (let val (new_exp, new_new_env) = (eval (body, new_env)) in (new_exp, new_new_env) end)
-      end
-    | evalApp _ _ _ = evalError "cannot apply non-functional value"
-*)
+  
 
   and evalApp (I.MTerm (I.VClosure (n,body,env))) v = eval (appendToE body ((n,v)::env))
     | evalApp (I.MTerm (I.VRecClosure (funcName,n,body,env))) v = let
