@@ -20,6 +20,8 @@ structure Evaluator = struct
   fun primEq (I.VInt a) (I.VInt b) = I.VBool (a=b)
     | primEq (I.VBool a) (I.VBool b) = I.VBool (a=b)
     | primEq _ _ = evalError "primEq"
+
+  fun primPrint a b = ((print (String.concat ["PRINTING: ", I.stringOfValue a])); b)
   
 
   fun lookup (name:string) [] = evalError ("failed lookup for "^name)
@@ -82,6 +84,7 @@ structure Evaluator = struct
 
 
 
+
 (*  let fun loop e = 
     if terminal (e) then get_value()
     if is_nice_point(e): 
@@ -135,7 +138,16 @@ structure Evaluator = struct
                                                                                (I.MExpr ((I.EIdent "b"), [])))), []))
                                                        )),
                                                 [])),
-                                     []))))]
+                                     [])))),
+        ("print", (I.MTerm (I.VClosure ("a",
+                                     (I.MExpr ((I.EFun ("b",
+                                                       (I.MExpr ((I.EPrimCall2 (primPrint,
+                                                                               (I.MExpr ((I.EIdent "a"), [])),
+                                                                               (I.MExpr ((I.EIdent "b"), [])))), []))
+                                                       )),
+                                                [])),
+                                     []))))
+        ]
 
 
 end
