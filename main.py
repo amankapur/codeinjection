@@ -1,15 +1,30 @@
+import os
 import sys
 import time
-import logging
+import socket
 from watchdog.observers import Observer
-from watchdog.events import LoggingEventHandler
+from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileModifiedEvent
+
+class CodeChangedEventHandler(FileSystemEventHandler):
+    def __init__(self):
+        self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.clientsocket.connect(("localhost",3037))
+
+    def on_modified(self, event):
+        file_name, file_extension = os.path.splitext(event.src_path)
+        if file_extension != ".jac" or event.is_directory: return
+
+        with open (event.src_path, "r") as myfile:
+            data = myfile.read()
+            print (data)
+            self.clientsocket.sendall(data)
+
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S')
     path = sys.argv[1] if len(sys.argv) > 1 else '.'
-    event_handler = LoggingEventHandler()
+
+    event_handler = CodeChangedEventHandler()
     observer = Observer()
     observer.schedule(event_handler, path, recursive=True)
     observer.start()
@@ -18,4 +33,5 @@ if __name__ == "__main__":
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
+        event_handler.clientsocket.close()
     observer.join()

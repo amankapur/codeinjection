@@ -6,7 +6,7 @@ structure NetShell = struct
   structure I = InternalRepresentation
   structure E = Evaluator
 
-  val port = 3034
+  val port = 3037
 
   fun stripNewline str =
     if (size str) < 2
