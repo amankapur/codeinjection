@@ -7,6 +7,29 @@ structure Evaluator = struct
   fun evalError msg = raise Evaluation msg
 
 
+  (* Diff functions *)
+  fun exprEquals (I.MTerm t1) (I.MTerm t2) = (valueEquals t1 t2)
+    | exprEquals (I.MExpr (I.EIf (e1, f1, g1), _)) (I.MExpr (I.EIf (e2, f2, g2), _)) =
+      (exprEquals e1 e2) andalso (exprEquals f1 f2) andalso (exprEquals g1 g2)
+    | exprEquals (I.MExpr (I.EIdent name1, _)) (I.MExpr (I.EIdent name2, _)) = (name1 = name2)
+    | exprEquals (I.MExpr (I.ELet (name1, e1, body1), _)) (I.MExpr (I.ELet (name2, e2, body2), _)) =
+      (name1 = name2) andalso (exprEquals e1 e2) andalso (exprEquals body1 body2)
+    | exprEquals (I.MExpr (I.ELetFun (name1, param1, functionBody1, body1), _)) (I.MExpr (I.ELetFun (name2, param2, functionBody2, body2), _)) =
+      (name1 = name2) andalso (param1 = param2) andalso (exprEquals functionBody1 functionBody2) andalso (exprEquals body1 body2)
+    | exprEquals (I.MExpr ((I.EApp (e1_old, e2_old)), _)) (I.MExpr ((I.EApp (e1_new, e2_new)), _)) = 
+      (exprEquals e1_old e1_new) andalso (exprEquals e2_old e2_new)
+    | exprEquals (I.MExpr (I.EFun (name1, body1), _)) (I.MExpr (I.EFun (name2, body2), _)) =
+      (name1 = name2) andalso (exprEquals body1 body2)
+    | exprEquals _ _ = false
+
+  and valueEquals (I.VInt i1) (I.VInt i2) = (i1 = i2)
+    | valueEquals (I.VBool b1) (I.VBool b2) = (b1 = b2)
+    | valueEquals (I.VClosure (arg_name1, function_body1, _)) (I.VClosure (arg_name2, function_body2, _)) =
+      (arg_name1 = arg_name2) andalso (exprEquals function_body1 function_body2)
+    | valueEquals (I.VRecClosure (name1, arg_name1, function_body1, _)) (I.VRecClosure (name2, arg_name2, function_body2, _)) =
+      (name1 = name2) andalso (arg_name1 = arg_name2) andalso (exprEquals function_body1 function_body2)
+    | valueEquals _ _ = false
+
   (*
    *   Primitive operations
    *)
