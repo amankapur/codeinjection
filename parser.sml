@@ -114,7 +114,7 @@ structure Parser =  struct
   val tokens = let
     fun convert (re,f) = (R.compileString re, f)
   in
-    map convert [("( |\\n|\\t)+",         whitespace),
+    map convert [("( |\\n|\\t|\\r)+",         whitespace),
                  ("=",                    produceEqual),
                  ("\\+",                  producePlus),
                  ("\\*",                  produceTimes),

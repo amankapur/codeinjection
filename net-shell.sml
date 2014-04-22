@@ -6,23 +6,18 @@ structure NetShell = struct
   structure I = InternalRepresentation
   structure E = Evaluator
 
-  val port = 3037
-
-  fun stripNewline str =
-    if (size str) < 2
-    then str
-    else (substring (str,0,(size str)-2))
+  val port = 3042
 
   fun run fenv sock = let
     val (is, os) = SocketIO.openSocket sock
     fun prompt () = (print "func-env-demo> "; SocketIO.inputLine is)
     
-    fun pr l = print ((String.concatWith " " l)^"\r\n")
+    fun pr l = print ((String.concatWith " " l)^"\n")
     fun read fenv =
         (case prompt ()
           of NONE => ()
-           | SOME ".\r\n" => (Socket.close sock)
-           | SOME str => eval_print fenv (stripNewline str))
+           | SOME "\f\n" => (Socket.close sock)
+           | SOME str => eval_print fenv str)
     and eval_print fenv str =
         (let val ts = P.lexString str
              val _ = pr (["  Tokens ="] @ (map P.stringOfToken ts))
@@ -30,14 +25,14 @@ structure NetShell = struct
              val _ = pr ["  IR = ", I.stringOfMExpr (expr)]
              val v = (E.shellLoop expr fenv)
              (*val _ = pr [I.stringOfMExpr v]*)
-             val _ = pr ["\r\n"]
+             val _ = pr ["\n"]
          in
            read fenv
          end
          handle P.Parsing msg => (pr ["Parsing error:", msg]; read fenv)
               | E.Evaluation msg => (pr ["Evaluation error:", msg]; read fenv))
   in
-    print "Type . by itself to quit\r\n";
+    print "Type . by itself to quit\n";
     read (fenv@(E.primitives))    
   end
 
@@ -45,5 +40,3 @@ structure NetShell = struct
   
 
 end
-
-
