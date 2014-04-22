@@ -7,9 +7,9 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.events import FileModifiedEvent
 
 class CodeChangedEventHandler(FileSystemEventHandler):
-    def __init__(self):
+    def __init__(self, address):
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clientsocket.connect(("localhost",3042))
+        self.clientsocket.connect((address,3042))
 
     def on_modified(self, event):
         file_name, file_extension = os.path.splitext(event.src_path)
@@ -23,9 +23,10 @@ class CodeChangedEventHandler(FileSystemEventHandler):
 
 
 if __name__ == "__main__":
-    path = sys.argv[1] if len(sys.argv) > 1 else '.'
+    path = '.'
+    address = sys.argv[1] if len(sys.argv) > 1 else "localhost"
 
-    event_handler = CodeChangedEventHandler()
+    event_handler = CodeChangedEventHandler(address)
     observer = Observer()
     observer.schedule(event_handler, path, recursive=True)
     observer.start()
