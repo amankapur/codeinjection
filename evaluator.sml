@@ -1,9 +1,6 @@
-
 structure Evaluator = struct
 
   structure I = InternalRepresentation
-
-
 
   exception Evaluation of string
 
@@ -22,7 +19,7 @@ structure Evaluator = struct
     | primEq _ _ = evalError "primEq"
 
   fun primPrint a b = ((print (String.concat ["PRINTING: ", I.stringOfValue a])); b)
-  
+
 
   fun lookup (name:string) [] = evalError ("failed lookup for "^name)
     | lookup name ((n,v)::env) =
@@ -42,7 +39,7 @@ structure Evaluator = struct
   fun eval (I.MTerm t)  = I.MTerm t
     | eval (I.MExpr (I.EIf (e, f, g), env)) =
       if (isTerminal e)
-      then evalIf e f g env 
+      then evalIf e f g env
       else I.MExpr ( (I.EIf ((eval (appendToE e env)), f, g)), env)
     | eval (I.MExpr (I.EIdent name, env)) = lookup name env
     | eval (I.MExpr (I.ELet (name, e, body), env)) =
@@ -50,15 +47,15 @@ structure Evaluator = struct
       then evalLet name e body env
       else I.MExpr (I.ELet (name, eval (appendToE e env), body), env)
     | eval (I.MExpr (I.ELetFun (name, param, functionBody, body), env)) = evalLetFun name param functionBody body env
-    | eval (I.MExpr ((I.EApp (e1, e2)), env)) = 
-      if (isTerminal e1) 
+    | eval (I.MExpr ((I.EApp (e1, e2)), env)) =
+      if (isTerminal e1)
       then
         (if (isTerminal e2)
         then evalApp e1 e2
         else (I.MExpr (I.EApp (e1, eval (appendToE e2 env)), env)))
       else I.MExpr (I.EApp (eval (appendToE e1 env), e2), env)
     | eval (I.MExpr (I.EPrimCall2 (f, e1, e2), env)) =
-      if (isTerminal e1) 
+      if (isTerminal e1)
       then
         (if (isTerminal e2)
         then (let val I.MTerm t1 = e1
@@ -73,31 +70,34 @@ structure Evaluator = struct
 
   and appendToE (I.MExpr (e, env)) newEnv = (I.MExpr (e, env@newEnv))
     | appendToE (I.MTerm t) _ = (I.MTerm t)
-    
 
-  and shellLoop e env = loop (appendToE e env) NONE    
 
-  and loop e _ = (print (String.concat ["e is: ", I.stringOfMExpr e]);
-                         (if isTerminal e then e else loop (eval e) (TextIO.inputLine (TextIO.stdIn))))
+  and shellLoop e env (is,os) = loop (appendToE e env) (is,os)
+
+  and loop e (is,os) = ((SocketIO.output (os, "STEP"); SocketIO.flushOut os);
+                     (case (SocketIO.inputLine is)
+                     of NONE => ((print "UNKNOWN!\n"); print (String.concat ["e is: ", I.stringOfMExpr e]); (if isTerminal e then e else loop (eval e) (is,os) ))
+                      | SOME "\n" => ((print "NO CHANGE!\n"); print (String.concat ["e is: ", I.stringOfMExpr e]); (if isTerminal e then e else loop (eval e) (is,os) ))
+                      | SOME str => ((print "CHANGED!\n"); print (String.concat ["e is: ", I.stringOfMExpr e]); (if isTerminal e then e else loop (eval e) (is,os) ))))
 
   (*and printEnv env helper = ((print (String.concat ([helper,"\nlookup : \n"]@((List.map stringOfEnvTup env)@["\n"])))); ())*)
 
 
 
 
-(*  let fun loop e = 
+(*  let fun loop e =
     if terminal (e) then get_value()
-    if is_nice_point(e): 
+    if is_nice_point(e):
       check_changes
       loop(eval e’)
     else loop(eval e)
 *)
-  
+
 
   and evalApp (I.MTerm (I.VClosure (n,body,env))) v = eval (appendToE body ((n,v)::env))
     | evalApp (I.MTerm (I.VRecClosure (funcName,n,body,env))) v = let
       val new_env = [(funcName, (I.MTerm (I.VRecClosure (funcName,n,body,env)))),(n,v)]@env
-      in 
+      in
         eval (appendToE body new_env)
       end
     | evalApp _ _ = evalError "cannot apply non-functional value"
@@ -109,10 +109,10 @@ structure Evaluator = struct
     | evalIf _ _ _ _ = evalError "evalIf"
 
   and evalLet name termV body env = let val new_env = ((name, termV)::env) in eval (appendToE body new_env) end
-  
+
   and evalLetFun name param functionBody body env = let
       val f = (I.MTerm (I.VRecClosure (name, param, functionBody, env)))
-      val new_env = ((name,f)::env)      
+      val new_env = ((name,f)::env)
   in
       appendToE body new_env
   end
@@ -122,7 +122,7 @@ structure Evaluator = struct
    *   List of primitives (already in a form suitable for the environment)
    *)
 
-  val primitives =   
+  val primitives =
       [("+", (I.MTerm (I.VClosure ("a",
                                      (I.MExpr ((I.EFun ("b",
                                                        (I.MExpr ((I.EPrimCall2 (primPlus,
