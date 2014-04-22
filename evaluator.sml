@@ -3,6 +3,15 @@ structure Evaluator = struct
 
   structure I = InternalRepresentation
 
+  val globalEnv = []
+
+  fun addToGlobal funcName params funcBody = let 
+                                        val varName = ref (funcBody, params)
+                                        val _ = (varName, funcBody)@globalEnv
+                                      in 
+                                        varName
+                                      end
+  
 
 
   exception Evaluation of string
@@ -23,6 +32,11 @@ structure Evaluator = struct
 
   fun primPrint a b = ((print (String.concat ["PRINTING: ", I.stringOfValue a])); b)
   
+
+  fun globalLookup a = refLookup a globalEnv
+
+  fun refLookup (a:ref) [] = evalError ("failed lookup for "^!a)
+    | refLookup a ((b, v)::env) = if (!a = !b) then v else lookup a env
 
   fun lookup (name:string) [] = evalError ("failed lookup for "^name)
     | lookup name ((n,v)::env) =
@@ -96,7 +110,9 @@ structure Evaluator = struct
 
   and evalApp (I.MTerm (I.VClosure (n,body,env))) v = eval (appendToE body ((n,v)::env))
     | evalApp (I.MTerm (I.VRecClosure (funcName,n,body,env))) v = let
-      val new_env = [(funcName, (I.MTerm (I.VRecClosure (funcName,n,body,env)))),(n,v)]@env
+      val newFname = addToGlobal funcName n body
+      val new_env = [(funcName, (I.MTerm (I.VRecClosure (new,n,body,env)))),(n,v)]@env
+
       in 
         eval (appendToE body new_env)
       end
