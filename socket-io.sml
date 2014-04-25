@@ -1,8 +1,8 @@
 
-structure SocketIO = 
+structure SocketIO =
 
     struct
-        
+
         structure S = Socket
         structure SIO = TextIO.StreamIO
         structure TPIO = TextPrimIO
@@ -10,12 +10,12 @@ structure SocketIO =
         open TextIO
 
         (* opening an (accepted) socket yields two streams
-         * constructed from readers and writers to the 
+         * constructed from readers and writers to the
          * opened socket *)
-            
-        local 
+
+        local
             fun rd (s) = let
-		val (haddr, port) = 
+		val (haddr, port) =
 		    INetSock.fromAddr (Socket.Ctl.getSockName s)
 		val sockName = String.concat [NetHostDB.toString haddr,
 					      ":",
@@ -45,11 +45,11 @@ structure SocketIO =
 					      Int.toString port]
 		fun writeVec buffer = let
 		    val (str,i,sz) = CharVectorSlice.base buffer
-		    val slice = 
+		    val slice =
 			Word8VectorSlice.slice (Byte.stringToBytes(str),i,SOME sz)
 		in
 		    S.sendVec (s,slice)
-		end 
+		end
 	    in
 		TPIO.WR {name = sockName,
                          chunkSize = Socket.Ctl.getSNDBUF s,
@@ -67,8 +67,8 @@ structure SocketIO =
                          ioDesc = NONE}
 	    end
         in
-            
-            fun openSocket (s) = 
+
+            fun openSocket (s) =
                 let val inS = StreamIO.mkInstream (rd(s),"")
                     val outS = StreamIO.mkOutstream (wr(s),IO.NO_BUF)
                 in

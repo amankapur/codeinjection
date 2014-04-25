@@ -6,12 +6,12 @@ structure NetShell = struct
   structure I = InternalRepresentation
   structure E = Evaluator
 
-  val port = 3042
+  val port = 3041
 
   fun run fenv sock = let
     val (is, os) = SocketIO.openSocket sock
     fun prompt () = (print "func-env-demo> "; SocketIO.inputLine is)
-    
+
     fun pr l = print ((String.concatWith " " l)^"\n")
     fun read fenv =
         (case prompt ()
@@ -23,7 +23,10 @@ structure NetShell = struct
              val _ = pr (["  Tokens ="] @ (map P.stringOfToken ts))
              val expr = P.parse ts
              val _ = pr ["  IR = ", I.stringOfMExpr (expr)]
-             val v = (E.shellLoop expr fenv)
+
+             val begin = (SocketIO.output (os, "READING"); SocketIO.flushOut os)
+             val v = (E.shellLoop expr fenv (is, os))
+             val finish = (SocketIO.output (os, "DONE"); SocketIO.flushOut os)
              (*val _ = pr [I.stringOfMExpr v]*)
              val _ = pr ["\n"]
          in
@@ -33,10 +36,10 @@ structure NetShell = struct
               | E.Evaluation msg => (pr ["Evaluation error:", msg]; read fenv))
   in
     print "Type . by itself to quit\n";
-    read (fenv@(E.primitives))    
+    read (fenv@(E.primitives))
   end
 
   fun netshell fenv = Server.mkSingleServer port (fn s => run fenv s)
-  
+
 
 end

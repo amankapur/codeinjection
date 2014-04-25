@@ -14,7 +14,7 @@ structure InternalRepresentation = struct
            | EApp of main_expr * main_expr
            | EPrimCall2 of (value -> value -> value) * main_expr * main_expr
 
-  and main_expr = MExpr of expr * (string * main_expr) list 
+  and main_expr = MExpr of expr * (string * main_expr) list
                 | MTerm of value
 
   fun stringOfExpr e = let
