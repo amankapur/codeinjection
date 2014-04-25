@@ -6,6 +6,19 @@ structure Evaluator = struct
 
   fun evalError msg = raise Evaluation msg
 
+  val globalEnv : ((string * ((I.main_expr))) list) ref = ref []
+
+  fun addToGlobal funcName value = ((globalEnv:=(funcName, value)::(!globalEnv)); ())
+  
+  fun updateGlobal funcName value = ((globalEnv:=(List.foldl (fn ((n,v),y) => if (funcName=n) then (funcName,value)::y else (n,v)::y) [] (!globalEnv))); ())
+  
+  fun lookup (name:string) [] = evalError ("failed lookup for "^name)
+    | lookup name ((n,v)::env) = (if (n = name) then v else lookup name env)
+
+
+  fun lookupGlobal (funcName:string) = lookup funcName (!globalEnv)
+
+
 
   (* Diff functions *)
   fun exprEquals (I.MTerm t1) (I.MTerm t2) = (valueEquals t1 t2)
@@ -43,18 +56,7 @@ structure Evaluator = struct
 
   fun primPrint a b = ((print (String.concat ["PRINTING: ", I.stringOfValue a])); b)
 
-
-  fun globalLookup a = refLookup a globalEnv
-
-  fun refLookup (a:ref) [] = evalError ("failed lookup for "^!a)
-    | refLookup a ((b, v)::env) = if (!a = !b) then v else lookup a env
-
-  fun lookup (name:string) [] = evalError ("failed lookup for "^name)
-    | lookup name ((n,v)::env) =
-        (if (n = name) then
-                  v
-                else lookup name env)
-
+  
   (*
    *   Evaluation functions
    *
@@ -105,10 +107,11 @@ structure Evaluator = struct
   and loop e (is,os) = ((SocketIO.output (os, "STEP"); SocketIO.flushOut os);
                      (case (SocketIO.inputLine is)
                      of NONE => ((print "UNKNOWN!\n"); print (String.concat ["e is: ", I.stringOfMExpr e]); (if isTerminal e then e else loop (eval e) (is,os) ))
-                      | SOME "\n" => ((print "NO CHANGE!\n"); print (String.concat ["e is: ", I.stringOfMExpr e]); (if isTerminal e then e else loop (eval e) (is,os) ))
+                      | SOME "\n" => ((print "NO CHANGE!\n"); print (String.concat ["e is: ", I.stringOfMExpr e]); printEnv (!globalEnv) "GLOBAL: "; (if isTerminal e then e else loop (eval e) (is,os) ))
                       | SOME str => ((print "CHANGED!\n"); print (String.concat ["e is: ", I.stringOfMExpr e]); (if isTerminal e then e else loop (eval e) (is,os) ))))
 
-  (*and printEnv env helper = ((print (String.concat ([helper,"\nlookup : \n"]@((List.map stringOfEnvTup env)@["\n"])))); ())*)
+
+  and printEnv env helper = ((print (String.concat ([helper,"\nlookup : \n"]@((List.map I.stringOfEnvTup env)@["\n"])))); ())
 
 
 
@@ -121,11 +124,12 @@ structure Evaluator = struct
     else loop(eval e)
 *)
 
-
+  and addToEnv fName value localEnv = (addToGlobal fName value; (fName, value)::localEnv) 
+      
   and evalApp (I.MTerm (I.VClosure (n,body,env))) v = eval (appendToE body ((n,v)::env))
-    | evalApp (I.MTerm (I.VRecClosure (funcName,n,body,env))) v = let
-      val new_env = [(funcName, (I.MTerm (I.VRecClosure (funcName,n,body,env)))),(n,v)]@env
-      in
+    | evalApp (I.MTerm (I.VRecClosure (funcName, param,body,env))) v = let
+      val new_env = addToEnv funcName (I.MTerm (I.VRecClosure (funcName, param, body, env))) ((param, v)::env)
+      in 
         eval (appendToE body new_env)
       end
     | evalApp _ _ = evalError "cannot apply non-functional value"
@@ -140,7 +144,7 @@ structure Evaluator = struct
 
   and evalLetFun name param functionBody body env = let
       val f = (I.MTerm (I.VRecClosure (name, param, functionBody, env)))
-      val new_env = ((name,f)::env)
+      val new_env = addToEnv name f env     
   in
       appendToE body new_env
   end
