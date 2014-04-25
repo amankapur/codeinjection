@@ -11,5 +11,4 @@ group is
   server.sml
   socket-io.sml
 
-  shell.sml
   net-shell.sml  

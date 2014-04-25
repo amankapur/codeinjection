@@ -6,40 +6,73 @@ structure NetShell = struct
   structure I = InternalRepresentation
   structure E = Evaluator
 
-  val port = 3041
+(* Utilities *)
+  fun pr l = print ((String.concatWith " " l)^"\n")
 
-  fun run fenv sock = let
+  fun parse str =
+    let val ts = P.lexString str
+        val _ = pr (["  Tokens ="] @ (map P.stringOfToken ts))
+        val expr = P.parse ts
+        val _ = pr ["  IR = ", I.stringOfMExpr (expr)]
+    in
+      expr
+    end
+(* Utilities *)
+
+  fun shellLoop e env (is,os) = loop (E.appendToE e env) (E.appendToE e env) (is,os)
+
+  and loop oldIR currentIR (is,os) =
+    (SocketIO.output (os, "STEP");
+     SocketIO.flushOut os;
+     (case (SocketIO.inputLine is)
+     of NONE =>
+          (print "UNKNOWN!\n";
+          continue oldIR currentIR (is, os))
+      | SOME "\n" =>
+          (print "NO CHANGE!\n";
+          continue oldIR currentIR (is, os))
+      | SOME str =>
+        (let
+            val _ = print "CHANGED!\n"
+            val newIR = parse str
+            val _ = (pr ["new IR is:", I.stringOfMExpr newIR])
+            val difference = E.remDups (E.irDiff oldIR newIR ("", NONE)) (* XXX: put remDups in E.irDiff *)
+            val _ = E.updateGlobals difference
+        in
+            continue newIR newIR (is, os)
+        end)))
+
+  and continue oldIR currentIR (is, os) =
+      (E.printEnv (!E.globalEnv) "GLOBAL: ";
+      print (String.concat ["e is: ", I.stringOfMExpr currentIR]);
+      (if E.isTerminal currentIR then currentIR else loop oldIR (E.eval currentIR) (is,os) ))
+
+  fun run sock = let
     val (is, os) = SocketIO.openSocket sock
-    fun prompt () = (print "func-env-demo> "; SocketIO.inputLine is)
+    fun readSocket () = (print "listening to socket "; SocketIO.inputLine is)
 
-    fun pr l = print ((String.concatWith " " l)^"\n")
-    fun read fenv =
-        (case prompt ()
+    fun read () =
+        (case readSocket ()
           of NONE => ()
            | SOME "\f\n" => (Socket.close sock)
-           | SOME str => eval_print fenv str)
-    and eval_print fenv str =
-        (let val ts = P.lexString str
-             val _ = pr (["  Tokens ="] @ (map P.stringOfToken ts))
-             val expr = P.parse ts
-             val _ = pr ["  IR = ", I.stringOfMExpr (expr)]
-
+           | SOME str => eval_print str)
+    
+    and eval_print str =
+        (let val expr = parse str
              val begin = (SocketIO.output (os, "READING"); SocketIO.flushOut os)
-             val v = (E.shellLoop expr fenv (is, os))
+             val v = (shellLoop expr E.primitives (is, os))
              val finish = (SocketIO.output (os, "DONE"); SocketIO.flushOut os)
              (*val _ = pr [I.stringOfMExpr v]*)
              val _ = pr ["\n"]
          in
-           read fenv
+           read ()
          end
-         handle P.Parsing msg => (pr ["Parsing error:", msg]; read fenv)
-              | E.Evaluation msg => (pr ["Evaluation error:", msg]; read fenv))
+         handle P.Parsing msg => (pr ["Parsing error:", msg]; read ())
+              | E.Evaluation msg => (pr ["Evaluation error:", msg]; read ()))
   in
-    print "Type . by itself to quit\n";
-    read (fenv@(E.primitives))
+    read ()
   end
 
-  fun netshell fenv = Server.mkSingleServer port (fn s => run fenv s)
-
+  fun netshell port = Server.mkSingleServer port (fn s => run s)
 
 end

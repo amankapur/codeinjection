@@ -8,10 +8,37 @@ structure Evaluator = struct
 
   val globalEnv : ((string * ((I.main_expr))) list) ref = ref []
 
-  fun addToGlobal funcName value = ((globalEnv:=(funcName, value)::(!globalEnv)); ())
+(* XXX: remdups in irDiff *)
+  fun remDups [] = []
+    | remDups ((name,ir)::xs) = (name,ir)::(List.filter (fn (compName,_) => compName <> name) xs)
+
+  (*fun addToGlobal funcName value = ((globalEnv:=(funcName, value)::(!globalEnv)); ())*)
+  fun addToGlobal funcName value = ((globalEnv:=remDups ((funcName, value)::(!globalEnv))); ())
+
+  (* changeClosureEnv: given old_closure and new_closure, replace the env in new_closure with the
+                       env in old_closure. *)
+  fun changeClosureEnv (I.MTerm (I.VRecClosure (_, _, _, env))) (I.MTerm (I.VRecClosure (name, param, body, _))) = 
+    (I.MTerm (I.VRecClosure (name, param, body, env)))
+    | changeClosureEnv _ _ = evalError "changeClosureEnv called on two non-closures"
   
-  fun updateGlobal funcName value = ((globalEnv:=(List.foldl (fn ((n,v),y) => if (funcName=n) then (funcName,value)::y else (n,v)::y) [] (!globalEnv))); ())
-  
+  fun changeGlobal funcName newClosure =
+    ((globalEnv :=
+      (List.foldl (fn ((n, oldClosure),y) =>
+                    if (funcName = n)
+                    then (funcName, (changeClosureEnv oldClosure newClosure))::y
+                    else (n, oldClosure)::y) [] (!globalEnv))); ())
+  fun removeGlobal name =
+    ((globalEnv :=
+      (List.foldl (fn ((n,v),y) =>
+                    if (name = n)
+                    then y
+                    else (n, v)::y) [] (!globalEnv))); ())
+
+
+  fun updateGlobals ((name, NONE)::funcList) = (removeGlobal name; updateGlobals funcList)
+    | updateGlobals ((name, SOME closure)::funcList) = (changeGlobal name closure; updateGlobals funcList)
+    | updateGlobals [] = ()
+
   fun lookup (name:string) [] = evalError ("failed lookup for "^name)
     | lookup name ((n,v)::env) = (if (n = name) then v else lookup name env)
 
@@ -20,27 +47,51 @@ structure Evaluator = struct
 
 
 
+
+    (* old new *)
+
   (* Diff functions *)
-  fun exprEquals (I.MTerm t1) (I.MTerm t2) = (valueEquals t1 t2)
-    | exprEquals (I.MExpr (I.EIf (e1, f1, g1), _)) (I.MExpr (I.EIf (e2, f2, g2), _)) =
-      (exprEquals e1 e2) andalso (exprEquals f1 f2) andalso (exprEquals g1 g2)
-    | exprEquals (I.MExpr (I.EIdent name1, _)) (I.MExpr (I.EIdent name2, _)) = (name1 = name2)
-    | exprEquals (I.MExpr (I.ELet (name1, e1, body1), _)) (I.MExpr (I.ELet (name2, e2, body2), _)) =
-      (name1 = name2) andalso (exprEquals e1 e2) andalso (exprEquals body1 body2)
-    | exprEquals (I.MExpr (I.ELetFun (name1, param1, functionBody1, body1), _)) (I.MExpr (I.ELetFun (name2, param2, functionBody2, body2), _)) =
-      (name1 = name2) andalso (param1 = param2) andalso (exprEquals functionBody1 functionBody2) andalso (exprEquals body1 body2)
-    | exprEquals (I.MExpr ((I.EApp (e1_old, e2_old)), _)) (I.MExpr ((I.EApp (e1_new, e2_new)), _)) = 
-      (exprEquals e1_old e1_new) andalso (exprEquals e2_old e2_new)
-    | exprEquals (I.MExpr (I.EFun (name1, body1), _)) (I.MExpr (I.EFun (name2, body2), _)) =
-      (name1 = name2) andalso (exprEquals body1 body2)
-    | exprEquals _ _ = false
+  fun irDiff (I.MTerm t1) (I.MTerm t2) currentFunc =
+        if (valueEquals t1 t2) then [] else [currentFunc]
+    | irDiff (I.MExpr (e1,_)) (I.MExpr (e2,_)) currentFunc = (case (e1, e2) of
+        (I.EIf (e1, f1, g1), I.EIf (e2, f2, g2)) =>
+          (irDiff e1 e2 currentFunc)@
+          (irDiff f1 f2 currentFunc)@
+          (irDiff g1 g2 currentFunc)
+      | (I.EIdent name1, I.EIdent name2) =>
+          if (name1 = name2) then [] else [currentFunc]
+      | (I.ELet (name1, e1, body1), I.ELet (name2, e2, body2)) =>
+          (if (name1 = name2)
+            (* let x = e1 in body1 => let x = e2 in body2
+               look at e1, e2 and body1, body2 to find diffs lower down *)
+           then (irDiff e1 e2 currentFunc) @ (irDiff body1 body2 currentFunc) 
+            (* let x = ... has changed to let y = ... so current func has changed.
+               stop looking for diffs lower down.  *)
+           else [currentFunc, (name1, NONE)]) 
+           (* XXX: Problem with removing funs?*)
+      | (I.ELetFun (name1, param1, functionBody1, body1), I.ELetFun (name2, param2, functionBody2, body2)) =>
+          (if (name1 = name2)
+           then
+            let val newFunc = (name2, SOME (I.MTerm (I.VRecClosure (name2, param2, body2, [])))) in
+              (irDiff functionBody1 functionBody2 newFunc)
+            end
+           else [currentFunc,(name1,NONE)])@
+          (if (param1 = param2) then [] else [currentFunc])@
+          (irDiff body1 body2 currentFunc)
+      | (I.EApp (e1_old, e2_old), I.EApp (e1_new, e2_new)) => 
+          (irDiff e1_old e1_new currentFunc) @ (irDiff e2_old e2_new currentFunc)
+      | (I.EFun (name1, body1), I.EFun (name2, body2)) =>
+          (if (name1 = name2) then (irDiff body1 body2 currentFunc) else [currentFunc])
+      | (_, _) => [currentFunc])
+    | irDiff _ _ currentFunc = [currentFunc]
+
 
   and valueEquals (I.VInt i1) (I.VInt i2) = (i1 = i2)
     | valueEquals (I.VBool b1) (I.VBool b2) = (b1 = b2)
-    | valueEquals (I.VClosure (arg_name1, function_body1, _)) (I.VClosure (arg_name2, function_body2, _)) =
-      (arg_name1 = arg_name2) andalso (exprEquals function_body1 function_body2)
+(*    | valueEquals (I.VClosure (arg_name1, function_body1, _)) (I.VClosure (arg_name2, function_body2, _)) =
+      (arg_name1 = arg_name2) andalso (irDiff function_body1 function_body2)
     | valueEquals (I.VRecClosure (name1, arg_name1, function_body1, _)) (I.VRecClosure (name2, arg_name2, function_body2, _)) =
-      (name1 = name2) andalso (arg_name1 = arg_name2) andalso (exprEquals function_body1 function_body2)
+      (name1 = name2) andalso (arg_name1 = arg_name2) andalso (irDiff function_body1 function_body2)*)
     | valueEquals _ _ = false
 
   (*
@@ -100,15 +151,6 @@ structure Evaluator = struct
 
   and appendToE (I.MExpr (e, env)) newEnv = (I.MExpr (e, env@newEnv))
     | appendToE (I.MTerm t) _ = (I.MTerm t)
-
-
-  and shellLoop e env (is,os) = loop (appendToE e env) (is,os)
-
-  and loop e (is,os) = ((SocketIO.output (os, "STEP"); SocketIO.flushOut os);
-                     (case (SocketIO.inputLine is)
-                     of NONE => ((print "UNKNOWN!\n"); print (String.concat ["e is: ", I.stringOfMExpr e]); (if isTerminal e then e else loop (eval e) (is,os) ))
-                      | SOME "\n" => ((print "NO CHANGE!\n"); print (String.concat ["e is: ", I.stringOfMExpr e]); printEnv (!globalEnv) "GLOBAL: "; (if isTerminal e then e else loop (eval e) (is,os) ))
-                      | SOME str => ((print "CHANGED!\n"); print (String.concat ["e is: ", I.stringOfMExpr e]); (if isTerminal e then e else loop (eval e) (is,os) ))))
 
 
   and printEnv env helper = ((print (String.concat ([helper,"\nlookup : \n"]@((List.map I.stringOfEnvTup env)@["\n"])))); ())
