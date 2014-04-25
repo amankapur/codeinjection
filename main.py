@@ -9,7 +9,7 @@ from watchdog.events import FileModifiedEvent
 class CodeChangedEventHandler(FileSystemEventHandler):
     def __init__(self, address):
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clientsocket.connect((address,3042))
+        self.clientsocket.connect((address,3041))
 
     def on_modified(self, event):
         file_name, file_extension = os.path.splitext(event.src_path)
@@ -30,9 +30,18 @@ if __name__ == "__main__":
     observer = Observer()
     observer.schedule(event_handler, path, recursive=True)
     observer.start()
+
     try:
         while True:
-            time.sleep(1)
+            r = event_handler.clientsocket.recv(4096)
+            if r == "READING":
+                print "READY"
+            elif r == "STEP":
+                print "STEP"
+                event_handler.clientsocket.sendall("\n") # tells other end to continue evaluating
+            elif r == "DONE":
+                print "DONE"
+            # time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
         event_handler.clientsocket.sendall("\f\n") # tells the other end to close
