@@ -35,7 +35,6 @@ if __name__ == "__main__":
         # Python-generator style
         # https://synack.me/blog/using-python-tcp-sockets
         for line in event_handler.clientsocket.makefile('r'):
-            print("Waiting for sml to send something...")
             if line == "READING\n":
                 pass
             elif line == "STEP\n":
