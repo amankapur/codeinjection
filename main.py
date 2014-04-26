@@ -16,11 +16,8 @@ class CodeChangedEventHandler(FileSystemEventHandler):
         if file_extension != ".jac" or event.is_directory: return
 
         with open (event.src_path, "r") as myfile:
-            data = myfile.read()
-            data = data.replace('\n', ' ') + '\n'
-            print (data)
+            data = myfile.read().replace('\n', ' ') + '\n'
             self.clientsocket.sendall(data)
-
 
 if __name__ == "__main__":
     path = '.'
@@ -34,15 +31,19 @@ if __name__ == "__main__":
     observer.start()
 
     try:
-        while True:
-            r = event_handler.clientsocket.recv(4096)
-            if r == "READING":
-                print "READY"
-            elif r == "STEP":
-                print "STEP"
+        # socket provides a file interface so you can read line by line
+        # Python-generator style
+        # https://synack.me/blog/using-python-tcp-sockets
+        for line in event_handler.clientsocket.makefile('r'):
+            print("Waiting for sml to send something...")
+            if line == "READING\n":
+                pass
+            elif line == "STEP\n":
                 event_handler.clientsocket.sendall("\n") # tells other end to continue evaluating
-            elif r == "DONE":
-                print "DONE"
+            elif line == "DONE\n":
+                pass
+            else:
+                print("Received something unexpected from SML: " + line)
             # time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()

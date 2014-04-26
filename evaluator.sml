@@ -153,9 +153,18 @@ structure Evaluator = struct
     | appendToE (I.MTerm t) _ = (I.MTerm t)
 
 
-  and printEnv env helper = ((print (String.concat ([helper,"\nlookup : \n"]@((List.map I.stringOfEnvTup env)@["\n"])))); ())
+  and printEnv env =
+    print (String.concat (["\nCurrent global environment:\n"]@
+          (List.map (fn tup => (I.stringOfEnvTup tup)^"\n") env)@
+          ["\n"]))
 
-
+  and printEnvDiff env = 
+    print (String.concat (["\nEnvironment DIFF:\n"]@
+          (List.map (fn (name, closureOption) => (case closureOption of
+            NONE => name^" DELETED\n"
+          | SOME closure => (I.stringOfEnvTup (name, closure))^"\n"
+          ))  env)@
+          ["\n"]))
 
 
 (*  let fun loop e =

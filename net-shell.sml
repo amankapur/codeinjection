@@ -21,35 +21,33 @@ structure NetShell = struct
 
   fun shellLoop e env (is,os) = loop (E.appendToE e env) (E.appendToE e env) (is,os)
 
-  and loop oldIR currentIR (is,os) =
-    (SocketIO.output (os, "STEP");
+  and loop savedIR currentIR (is,os) =
+    (SocketIO.output (os, "STEP\n");
      SocketIO.flushOut os;
      (case (SocketIO.inputLine is)
-     of NONE =>
-          (print "UNKNOWN!\n";
-          continue oldIR currentIR (is, os))
-      | SOME "\n" =>
-          (print "NO CHANGE!\n";
-          continue oldIR currentIR (is, os))
+     of NONE => continue savedIR currentIR (is, os)
+      | SOME "\n" => continue savedIR currentIR (is, os)
       | SOME str =>
         (let
-            val _ = print "CHANGED!\n"
+            val _ = print "\n\n\n\n****************************\n*****    IR CHANGED    *****\n****************************\n\n\n\n"
             val newIR = parse str
-            val _ = (pr ["new IR is:", I.stringOfMExpr newIR])
-            val difference = E.remDups (E.irDiff oldIR newIR ("", NONE)) (* XXX: put remDups in E.irDiff *)
+            val difference = E.remDups (E.irDiff savedIR newIR ("", NONE)) (* XXX: put remDups in E.irDiff *)
+            val _ = E.printEnvDiff difference
             val _ = E.updateGlobals difference
         in
-            continue newIR newIR (is, os)
+            continue newIR currentIR (is, os)
         end)))
 
-  and continue oldIR currentIR (is, os) =
-      (E.printEnv (!E.globalEnv) "GLOBAL: ";
-      print (String.concat ["e is: ", I.stringOfMExpr currentIR]);
-      (if E.isTerminal currentIR then currentIR else loop oldIR (E.eval currentIR) (is,os) ))
+  and continue savedIR currentIR (is, os) =
+      (E.printEnv (!E.globalEnv);
+      pr ["Current IR:", I.stringOfMExpr currentIR];
+      (if E.isTerminal currentIR
+      then currentIR
+      else loop savedIR (E.eval currentIR) (is,os) ))
 
   fun run sock = let
     val (is, os) = SocketIO.openSocket sock
-    fun readSocket () = (print "listening to socket "; SocketIO.inputLine is)
+    fun readSocket () = (print "reading from socket\n"; SocketIO.inputLine is)
 
     fun read () =
         (case readSocket ()
@@ -59,9 +57,9 @@ structure NetShell = struct
     
     and eval_print str =
         (let val expr = parse str
-             val begin = (SocketIO.output (os, "READING"); SocketIO.flushOut os)
+             val _ = (SocketIO.output (os, "READING\n"); SocketIO.flushOut os)
              val v = (shellLoop expr E.primitives (is, os))
-             val finish = (SocketIO.output (os, "DONE"); SocketIO.flushOut os)
+             val _ = (SocketIO.output (os, "DONE\n"); SocketIO.flushOut os)
              (*val _ = pr [I.stringOfMExpr v]*)
              val _ = pr ["\n"]
          in
