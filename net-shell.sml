@@ -58,6 +58,7 @@ structure NetShell = struct
     and eval_print str =
         (let val expr = parse str
              val _ = (SocketIO.output (os, "READING\n"); SocketIO.flushOut os)
+             val _ = E.clearGlobal ()
              val v = (shellLoop expr E.primitives (is, os))
              val _ = (SocketIO.output (os, "DONE\n"); SocketIO.flushOut os)
              (*val _ = pr [I.stringOfMExpr v]*)

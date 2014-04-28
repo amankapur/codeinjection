@@ -34,6 +34,7 @@ structure Evaluator = struct
                     then y
                     else (n, v)::y) [] (!globalEnv))); ())
 
+  fun clearGlobal () = ((globalEnv := []); ())
 
   fun updateGlobals ((name, NONE)::funcList) = (removeGlobal name; updateGlobals funcList)
     | updateGlobals ((name, SOME closure)::funcList) = (changeGlobal name closure; updateGlobals funcList)
@@ -50,7 +51,10 @@ structure Evaluator = struct
                     | SOME v => v)
       | SOME v => v)
 
-
+  fun isInEnv (name:string) env =
+    (case (lookupEnv name env)
+        of NONE => false
+      | SOME _ => true)
 
 
     (* old new *)
@@ -77,7 +81,7 @@ structure Evaluator = struct
       | (I.ELetFun (name1, param1, functionBody1, body1), I.ELetFun (name2, param2, functionBody2, body2)) =>
           (if (name1 = name2)
            then
-            let val newFunc = (name2, SOME (I.MTerm (I.VRecClosure (name2, param2, body2, [])))) in
+            let val newFunc = (name2, SOME (I.MTerm (I.VRecClosure (name2, param2, functionBody2, [])))) in
               (irDiff functionBody1 functionBody2 newFunc)
             end
            else [currentFunc,(name1,NONE)])@
@@ -180,7 +184,7 @@ structure Evaluator = struct
     else loop(eval e)
 *)
 
-  and addToEnv fName value localEnv = (addToGlobal fName value; (fName, value)::localEnv) 
+  and addToEnv fName value localEnv = if isInEnv fName (!globalEnv) then (fName, value)::localEnv else (addToGlobal fName value; (fName, value)::localEnv) 
       
   and evalApp (I.MTerm (I.VClosure (n,body,env))) v = eval (appendToE body ((n,v)::env))
     | evalApp (I.MTerm (I.VRecClosure (funcName, param,body,env))) v = let
