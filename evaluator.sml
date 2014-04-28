@@ -121,35 +121,38 @@ structure Evaluator = struct
 
 
   fun eval (I.MTerm t)  = I.MTerm t
-    | eval (I.MExpr (I.EIf (e, f, g), env)) =
-      if (isTerminal e)
-      then evalIf e f g env
-      else I.MExpr ( (I.EIf ((eval (appendToE e env)), f, g)), env)
-    | eval (I.MExpr (I.EIdent name, env)) = lookup name env
-    | eval (I.MExpr (I.ELet (name, e, body), env)) =
-      if (isTerminal e)
-      then evalLet name e body env
-      else I.MExpr (I.ELet (name, eval (appendToE e env), body), env)
-    | eval (I.MExpr (I.ELetFun (name, param, functionBody, body), env)) = evalLetFun name param functionBody body env
-    | eval (I.MExpr ((I.EApp (e1, e2)), env)) =
-      if (isTerminal e1)
-      then
-        (if (isTerminal e2)
-        then evalApp e1 e2
-        else (I.MExpr (I.EApp (e1, eval (appendToE e2 env)), env)))
-      else I.MExpr (I.EApp (eval (appendToE e1 env), e2), env)
-    | eval (I.MExpr (I.EPrimCall2 (f, e1, e2), env)) =
-      if (isTerminal e1)
-      then
-        (if (isTerminal e2)
-        then (let val I.MTerm t1 = e1
-                  val I.MTerm t2 = e2
-              in
-                I.MTerm (f t1 t2)
-              end)
-        else (I.MExpr (I.EPrimCall2 (f, e1, eval (appendToE e2 env)), env)))
-      else (I.MExpr (I.EPrimCall2 (f, eval (appendToE e1 env), e2), env))
-    | eval (I.MExpr (I.EFun (name, body), env)) = I.MTerm (I.VClosure (name, body, env))
+    | eval (I.MExpr e) = (case e
+      of (I.EIf (e, f, g), env) =>
+        if (isTerminal e)
+        then evalIf e f g env
+        else I.MExpr ( (I.EIf ((eval (appendToE e env)), f, g)), env)
+      | (I.EIdent name, env) => lookup name env
+      | (I.ELet (name, e, body), env) =>
+        if (isTerminal e)
+        then evalLet name e body env
+        else I.MExpr (I.ELet (name, eval (appendToE e env), body), env)
+      | (I.ELetFun (name, param, functionBody, body), env) => evalLetFun name param functionBody body env
+      | ((I.EApp (e1, e2)), env) =>
+        if (isTerminal e1)
+        then
+          (if (isTerminal e2)
+          then evalApp e1 e2
+          else (I.MExpr (I.EApp (e1, eval (appendToE e2 env)), env)))
+        else I.MExpr (I.EApp (eval (appendToE e1 env), e2), env)
+      | (I.EPrimCall2 (f, e1, e2), env) =>
+        if (isTerminal e1)
+        then
+          (if (isTerminal e2)
+          then (let val I.MTerm t1 = e1
+                    val I.MTerm t2 = e2
+                in
+                  I.MTerm (f t1 t2)
+                end)
+          else (I.MExpr (I.EPrimCall2 (f, e1, eval (appendToE e2 env)), env)))
+        else (I.MExpr (I.EPrimCall2 (f, eval (appendToE e1 env), e2), env))
+      | (I.EFun (name, body), env) => I.MTerm (I.VClosure (name, body, env))
+    )
+
 
 
   and appendToE (I.MExpr (e, env)) newEnv = (I.MExpr (e, env@newEnv))
