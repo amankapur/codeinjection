@@ -58,6 +58,7 @@ structure Parser =  struct
   datatype token = T_LET
                  | T_IN
                  | T_SYM of string
+                 | T_STRING of string
                  | T_INT of int
                  | T_TRUE
                  | T_FALSE
@@ -72,12 +73,12 @@ structure Parser =  struct
                  | T_BACKSLASH
                  | T_RARROW
                  | T_COMMA
-                 | T_QUOTE
 
 
   fun stringOfToken T_LET = "T_LET"
     | stringOfToken T_IN = "T_IN"
     | stringOfToken (T_SYM s) = "T_SYM["^s^"]"
+    | stringOfToken (T_STRING s) = "T_STRING["^s^"]"
     | stringOfToken (T_INT i) = "T_INT["^(Int.toString i)^"]"
     | stringOfToken T_TRUE = "T_TRUE"
     | stringOfToken T_FALSE = "T_FALSE"
@@ -92,7 +93,6 @@ structure Parser =  struct
     | stringOfToken T_BACKSLASH = "T_BACKSLASH"
     | stringOfToken T_RARROW = "T_RARROW"
     | stringOfToken T_COMMA = "T_COMMA"
-    | stringOfToken T_QUOTE = "T_QUOTE"
 
 
   fun whitespace _ = NONE
@@ -121,7 +121,7 @@ structure Parser =  struct
   fun produceBackslash _ = SOME (T_BACKSLASH)
   fun produceRArrow _ = SOME (T_RARROW)
 
-  fun produceQuote _ = SOME (T_QUOTE)
+  fun produceString text = SOME (T_STRING text)
 
   val tokens = let
     fun convert (re,f) = (R.compileString re, f)
@@ -137,7 +137,7 @@ structure Parser =  struct
                  ("~?[0-9]+",             produceInt),
                  ("\\(",                  produceLParen),
                  ("\\)",                  produceRParen),
-                 ("\\\"",                  produceQuote)]
+                 ("\\\"[^\\\"\\r\\n]*\\\"",   produceString)]
   end
 
 
@@ -186,7 +186,7 @@ structure Parser =  struct
    *             T_TRUE                               [aterm_TRUE]
    *             T_FALSE                              [aterm_FALSE]
    *             T_SYM                                [aterm_SYM]
-   *             T_QUOTE syms T_QUOTE                 [aterm_STRING]
+   *             T_STRING                             [aterm_STRING]
    *             T_BACKSLASH T_SYM T_RARROW expr      [aterm_FUN]
    *             T_LPAREN expr T_RPAREN               [aterm_PARENS]
    *             T_IF expr T_THEN expr T_ELSE expr    [aterm_IF]
@@ -211,8 +211,11 @@ structure Parser =  struct
   fun expect_FALSE (T_FALSE::ts) = SOME ts
     | expect_FALSE _ = NONE
 
-  fun expect_SYM ((T_SYM s)::ts) = SOME (s,ts)
+  fun expect_SYM ((T_SYM s)::ts) = SOME (s, ts)
     | expect_SYM _ = NONE
+
+  fun expect_STRING ((T_STRING s)::ts) = SOME ((substring (s, 1, ((size s) - 2))), ts)
+    | expect_STRING _ = NONE
 
   fun expect_IF (T_IF::ts) = SOME ts
     | expect_IF _ = NONE
@@ -252,9 +255,6 @@ structure Parser =  struct
 
   fun expect_RARROW (T_RARROW::ts) = SOME ts
     | expect_RARROW _ = NONE
-
-  fun expect_QUOTE (T_QUOTE::ts) = SOME ts
-    | expect_QUOTE _ = NONE
 
   fun parse_expr ts =
     (case parse_expr_EQUAL ts
@@ -359,14 +359,9 @@ structure Parser =  struct
        | SOME (s,ts) => SOME (I.MExpr ((I.EIdent s), []),ts))
 
   and parse_aterm_STRING ts =
-    (case expect_QUOTE ts
+    (case expect_STRING ts
       of NONE => NONE
-       | SOME ts => (case parse_syms ts
-        of NONE => NONE
-        | SOME (syms, ts) => (case expect_QUOTE ts
-          of NONE => NONE
-          | SOME ts =>
-            SOME (I.MTerm(I.VString(stringJoin syms " ")), ts))))
+       | SOME (s,ts) => SOME (I.MTerm (I.VString s), ts))
 
   and parse_aterm_FUN ts =
     (case expect_BACKSLASH ts
@@ -472,22 +467,6 @@ structure Parser =  struct
             | SOME (ats,ts) => SOME (at::ats,ts)))
 
   and parse_aterm_list_EMPTY ts = SOME ([], ts)
-
-  and parse_syms ts =
-    (case parse_syms_NON_EMPTY ts
-      of NONE => parse_syms_EMPTY ts
-       | s => s)
-
-  and parse_syms_NON_EMPTY ts =
-    (case expect_SYM ts
-      of NONE => NONE
-       | SOME (sym,ts) =>
-         (case parse_syms ts
-           of NONE => NONE
-            | SOME (syms,ts) => SOME (sym::syms,ts)))
-
-  and parse_syms_EMPTY ts = SOME ([], ts)
-
 
   fun parse ts =
       (case parse_expr ts

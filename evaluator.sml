@@ -102,6 +102,9 @@ structure Evaluator = struct
    *)
 
   fun primPlus (I.VInt a) (I.VInt b) = I.VInt (a+b)
+    | primPlus (I.VString a) (I.VString b) = I.VString (a^b)
+    | primPlus (I.VInt a) (I.VString b) = I.VString ((Int.toString a)^b)
+    | primPlus (I.VString a) (I.VInt b) = I.VString (a^(Int.toString b))
     | primPlus _ _ = evalError "primPlus"
 
   fun primEq (I.VInt a) (I.VInt b) = I.VBool (a=b)
