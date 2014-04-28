@@ -51,12 +51,6 @@ structure Evaluator = struct
                     | SOME v => v)
       | SOME v => v)
 
-  fun isInEnv (name:string) env =
-    (case (lookupEnv name env)
-        of NONE => false
-      | SOME _ => true)
-
-
     (* old new *)
 
   (* Diff functions *)
@@ -184,11 +178,11 @@ structure Evaluator = struct
     else loop(eval e)
 *)
 
-  and addToEnv fName value localEnv = if isInEnv fName (!globalEnv) then (fName, value)::localEnv else (addToGlobal fName value; (fName, value)::localEnv) 
-      
+  and addToEnv fName value localEnv = (addToGlobal fName value; (fName, value)::localEnv)
+
   and evalApp (I.MTerm (I.VClosure (n,body,env))) v = eval (appendToE body ((n,v)::env))
     | evalApp (I.MTerm (I.VRecClosure (funcName, param,body,env))) v = let
-      val new_env = addToEnv funcName (I.MTerm (I.VRecClosure (funcName, param, body, env))) ((param, v)::env)
+      val new_env = (param, v)::env
       in 
         eval (appendToE body new_env)
       end
