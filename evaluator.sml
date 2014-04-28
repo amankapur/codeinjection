@@ -39,11 +39,16 @@ structure Evaluator = struct
     | updateGlobals ((name, SOME closure)::funcList) = (changeGlobal name closure; updateGlobals funcList)
     | updateGlobals [] = ()
 
-  fun lookup (name:string) [] = evalError ("failed lookup for "^name)
-    | lookup name ((n,v)::env) = (if (n = name) then v else lookup name env)
+  fun lookupEnv (name:string) [] = NONE
+    | lookupEnv name ((n,v)::env) = (if (n = name) then (SOME v) else lookupEnv name env)
 
 
-  fun lookupGlobal (funcName:string) = lookup funcName (!globalEnv)
+  fun lookup (name:string) env =
+    (case (lookupEnv name (!globalEnv))
+        of NONE => (case (lookupEnv name env)
+                      of NONE => evalError ("lookup failed on "^name)
+                    | SOME v => v)
+      | SOME v => v)
 
 
 
