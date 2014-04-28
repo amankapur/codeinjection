@@ -108,7 +108,7 @@ structure Evaluator = struct
     | primEq (I.VBool a) (I.VBool b) = I.VBool (a=b)
     | primEq _ _ = evalError "primEq"
 
-  fun primPrint a b = ((print (String.concat ["PRINTING: ", I.stringOfValue a])); b)
+  fun primPrint a b = ((print (String.concat ["PRINTING: ", I.stringOfValue a, "\n"])); b)
 
   
   (*
