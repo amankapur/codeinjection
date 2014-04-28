@@ -41,7 +41,7 @@ structure NetShell = struct
         end)))
 
   and continue savedIR currentIR (is, os) =
-      ( pr [I.stringOfMExpr currentIR, "\n\n"];
+      ( (*pr [I.stringOfMExpr currentIR, "\n\n"];*)
         if E.isTerminal currentIR
             then currentIR
             else loop savedIR (E.eval currentIR) (is,os))

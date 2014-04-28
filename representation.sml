@@ -43,8 +43,8 @@ structure InternalRepresentation = struct
   and stringOfEnvTup (n,v) = String.concat ["",n, " -> ", stringOfMExpr v, ", "]
 
   and (*stringOfMExpr (MExpr (e, env)) = String.concat [" MExpr (", stringOfExpr e, " ENV: [", String.concat (List.map stringOfEnvTup env), "] ) "]*)
-    stringOfMExpr (MExpr (e, env)) = String.concat [" MExpr (", stringOfExpr e, "^", Int.toString (List.length env), "^", ") "]
-    | stringOfMExpr (MTerm t) = String.concat [" {MTerm: ", stringOfValue t, "} "]
+    stringOfMExpr (MExpr (e, env)) = String.concat ["(", stringOfExpr e, "^", Int.toString (List.length env), "^", ") "]
+    | stringOfMExpr (MTerm t) = String.concat [" {", stringOfValue t, "} "]
 
   and stringOfValue (VInt i) = Int.toString i
     | stringOfValue (VBool true) = "true"
