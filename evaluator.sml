@@ -125,20 +125,20 @@ structure Evaluator = struct
       of (I.EIf (e, f, g), env) =>
         if (isTerminal e)
         then evalIf e f g env
-        else I.MExpr ( (I.EIf ((eval (appendToE e env)), f, g)), env)
+        else I.MExpr ( (I.EIf ((eval (setLocalEnv e env)), f, g)), env)
       | (I.EIdent name, env) => lookup name env
       | (I.ELet (name, e, body), env) =>
         if (isTerminal e)
         then evalLet name e body env
-        else I.MExpr (I.ELet (name, eval (appendToE e env), body), env)
+        else I.MExpr (I.ELet (name, eval (setLocalEnv e env), body), env)
       | (I.ELetFun (name, param, functionBody, body), env) => evalLetFun name param functionBody body env
       | ((I.EApp (e1, e2)), env) =>
         if (isTerminal e1)
         then
           (if (isTerminal e2)
           then evalApp e1 e2
-          else (I.MExpr (I.EApp (e1, eval (appendToE e2 env)), env)))
-        else I.MExpr (I.EApp (eval (appendToE e1 env), e2), env)
+          else (I.MExpr (I.EApp (e1, eval (setLocalEnv e2 env)), env)))
+        else I.MExpr (I.EApp (eval (setLocalEnv e1 env), e2), env)
       | (I.EPrimCall2 (f, e1, e2), env) =>
         if (isTerminal e1)
         then
@@ -148,15 +148,20 @@ structure Evaluator = struct
                 in
                   I.MTerm (f t1 t2)
                 end)
-          else (I.MExpr (I.EPrimCall2 (f, e1, eval (appendToE e2 env)), env)))
-        else (I.MExpr (I.EPrimCall2 (f, eval (appendToE e1 env), e2), env))
+          else (I.MExpr (I.EPrimCall2 (f, e1, eval (setLocalEnv e2 env)), env)))
+        else (I.MExpr (I.EPrimCall2 (f, eval (setLocalEnv e1 env), e2), env))
       | (I.EFun (name, body), env) => I.MTerm (I.VClosure (name, body, env))
     )
 
-
-
-  and appendToE (I.MExpr (e, env)) newEnv = (I.MExpr (e, env@newEnv))
-    | appendToE (I.MTerm t) _ = (I.MTerm t)
+(* Only set the local env if the local env is currently empty,
+   otherwise, leave it alone. This emulates Big Step Evaluation,
+   where you only pass the parent's env once to the child, and then let
+   the child expr modify the parents env. You never want to pass the
+   parent's env multiple times down to the child.
+*)
+  and setLocalEnv (I.MExpr (e, [])) newEnv = I.MExpr (e, newEnv)
+    | setLocalEnv (I.MExpr e) _ = I.MExpr e
+    | setLocalEnv (I.MTerm t) _ = I.MTerm t
 
 
   and printEnv env =
@@ -183,27 +188,31 @@ structure Evaluator = struct
 
   and addToEnv fName value localEnv = (addToGlobal fName value; (fName, value)::localEnv)
 
-  and evalApp (I.MTerm (I.VClosure (n,body,env))) v = eval (appendToE body ((n,v)::env))
+  and evalApp (I.MTerm (I.VClosure (n,body,env))) v = eval (setLocalEnv body ((n,v)::env))
     | evalApp (I.MTerm (I.VRecClosure (funcName, param,body,env))) v = let
       val new_env = (param, v)::env
       in 
-        eval (appendToE body new_env)
+        eval (setLocalEnv body new_env)
       end
     | evalApp _ _ = evalError "cannot apply non-functional value"
 
 
 
-  and evalIf (I.MTerm (I.VBool true))  f g env = eval (appendToE f env)
-    | evalIf (I.MTerm (I.VBool false)) f g env = eval (appendToE g env)
+  and evalIf (I.MTerm (I.VBool true))  f g env = eval (setLocalEnv f env)
+    | evalIf (I.MTerm (I.VBool false)) f g env = eval (setLocalEnv g env)
     | evalIf _ _ _ _ = evalError "evalIf"
 
-  and evalLet name termV body env = let val new_env = ((name, termV)::env) in eval (appendToE body new_env) end
+  and evalLet name termV body env = 
+    let val new_env = ((name, termV)::env)
+    in
+      eval (setLocalEnv body new_env)
+    end
 
   and evalLetFun name param functionBody body env = let
       val f = (I.MTerm (I.VRecClosure (name, param, functionBody, env)))
       val new_env = addToEnv name f env     
   in
-      appendToE body new_env
+      setLocalEnv body new_env
   end
 
 

@@ -17,7 +17,11 @@ structure NetShell = struct
     end
 (* Utilities *)
 
-  fun shellLoop e env (is,os) = loop (E.appendToE e env) (E.appendToE e env) (is,os)
+  fun shellLoop expr (is,os) =
+    let val exprWithPrimitives = (E.setLocalEnv expr E.primitives) 
+    in
+      loop exprWithPrimitives exprWithPrimitives (is,os)
+    end
 
   and loop savedIR currentIR (is,os) =
     (SocketIO.output (os, "STEP\n");
@@ -56,7 +60,7 @@ structure NetShell = struct
         (let val expr = parse str
              val _ = (SocketIO.output (os, "READING\n"); SocketIO.flushOut os)
              val _ = E.clearGlobal ()
-             val v = (shellLoop expr E.primitives (is, os))
+             val v = (shellLoop expr (is, os))
              val _ = (SocketIO.output (os, "DONE\n"); SocketIO.flushOut os)
              val _ = pr [I.stringOfMExpr v, "\n"]
          in
