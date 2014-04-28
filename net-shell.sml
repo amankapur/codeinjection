@@ -11,9 +11,7 @@ structure NetShell = struct
 
   fun parse str =
     let val ts = P.lexString str
-        val _ = pr (["  Tokens ="] @ (map P.stringOfToken ts))
         val expr = P.parse ts
-        val _ = pr ["  IR = ", I.stringOfMExpr (expr)]
     in
       expr
     end
@@ -39,15 +37,14 @@ structure NetShell = struct
         end)))
 
   and continue savedIR currentIR (is, os) =
-      (E.printEnv (!E.globalEnv);
-      pr ["Current IR:", I.stringOfMExpr currentIR];
-      (if E.isTerminal currentIR
-      then currentIR
-      else loop savedIR (E.eval currentIR) (is,os) ))
+      ( pr [I.stringOfMExpr currentIR, "\n\n"];
+        if E.isTerminal currentIR
+            then currentIR
+            else loop savedIR (E.eval currentIR) (is,os))
 
   fun run sock = let
     val (is, os) = SocketIO.openSocket sock
-    fun readSocket () = (print "reading from socket\n"; SocketIO.inputLine is)
+    fun readSocket () = SocketIO.inputLine is
 
     fun read () =
         (case readSocket ()
@@ -61,12 +58,11 @@ structure NetShell = struct
              val _ = E.clearGlobal ()
              val v = (shellLoop expr E.primitives (is, os))
              val _ = (SocketIO.output (os, "DONE\n"); SocketIO.flushOut os)
-             (*val _ = pr [I.stringOfMExpr v]*)
-             val _ = pr ["\n"]
+             val _ = pr [I.stringOfMExpr v, "\n"]
          in
            read ()
          end
-         handle P.Parsing msg => (pr ["Parsing error:", msg]; read ())
+         handle P.Parsing msg => (pr ["Parsing error:", msg, ": ", str]; read ())
               | E.Evaluation msg => (pr ["Evaluation error:", msg]; read ()))
   in
     read ()
