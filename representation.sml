@@ -3,6 +3,7 @@ structure InternalRepresentation = struct
 
   datatype value = VInt of int
                  | VBool of bool
+                 | VString of string
                  | VClosure of string * main_expr * (string * main_expr) list
                  | VRecClosure of string * string * main_expr * (string * main_expr) list
 
@@ -25,6 +26,7 @@ structure InternalRepresentation = struct
     fun strV (VInt i) = $ ["VInt ",Int.toString i]
       | strV (VBool true) = "VBool true"
       | strV (VBool false) = "VBool false"
+      | strV (VString str) = "VString "^str
       | strV (VClosure (n,e,_)) = $ ["VClosure (", n, ",", stringOfMExpr e, ")"]
       | strV (VRecClosure (f,n,e,_)) = $ ["VRecClosure (", f, ",",n, ",", stringOfMExpr e, ")"]
     and strE (EFun (n,e)) = $ ["EFun (", n, ",", stringOfMExpr e, ")"]
@@ -49,6 +51,7 @@ structure InternalRepresentation = struct
   and stringOfValue (VInt i) = Int.toString i
     | stringOfValue (VBool true) = "true"
     | stringOfValue (VBool false) = "false"
+    | stringOfValue (VString str) = str
     | stringOfValue (VClosure (n,e,_)) =
         String.concat ["<function (", n, ",", stringOfMExpr e,")>"]
     | stringOfValue (VRecClosure (f,n,e,_)) =

@@ -23,6 +23,14 @@ structure Parser =  struct
     getMatch (prefix cs)
   end
 
+  (* String utility *)
+  fun stringJoin strList delimiter =
+    foldr (fn (str, res) =>
+             if res = "" then str else str ^ delimiter ^ res) 
+          ""
+          strList
+
+
   (* match a string regular expression against a list of characters *)
 
   fun matchRE re cs = matchRE' (R.compileString re) cs
@@ -64,6 +72,7 @@ structure Parser =  struct
                  | T_BACKSLASH
                  | T_RARROW
                  | T_COMMA
+                 | T_QUOTE
 
 
   fun stringOfToken T_LET = "T_LET"
@@ -83,6 +92,7 @@ structure Parser =  struct
     | stringOfToken T_BACKSLASH = "T_BACKSLASH"
     | stringOfToken T_RARROW = "T_RARROW"
     | stringOfToken T_COMMA = "T_COMMA"
+    | stringOfToken T_QUOTE = "T_QUOTE"
 
 
   fun whitespace _ = NONE
@@ -111,6 +121,8 @@ structure Parser =  struct
   fun produceBackslash _ = SOME (T_BACKSLASH)
   fun produceRArrow _ = SOME (T_RARROW)
 
+  fun produceQuote _ = SOME (T_QUOTE)
+
   val tokens = let
     fun convert (re,f) = (R.compileString re, f)
   in
@@ -124,7 +136,8 @@ structure Parser =  struct
                  ("[a-zA-Z][a-zA-Z0-9]*", produceSymbol),
                  ("~?[0-9]+",             produceInt),
                  ("\\(",                  produceLParen),
-                 ("\\)",                  produceRParen)]
+                 ("\\)",                  produceRParen),
+                 ("\\\"",                  produceQuote)]
   end
 
 
@@ -173,6 +186,7 @@ structure Parser =  struct
    *             T_TRUE                               [aterm_TRUE]
    *             T_FALSE                              [aterm_FALSE]
    *             T_SYM                                [aterm_SYM]
+   *             T_QUOTE syms T_QUOTE                 [aterm_STRING]
    *             T_BACKSLASH T_SYM T_RARROW expr      [aterm_FUN]
    *             T_LPAREN expr T_RPAREN               [aterm_PARENS]
    *             T_IF expr T_THEN expr T_ELSE expr    [aterm_IF]
@@ -182,7 +196,8 @@ structure Parser =  struct
    *   aterm_list ::= aterm aterm_list                [aterm_list_ATERM_LIST]
    *                  <empty>                         [aterm_list_EMPTY]
    *
-   *
+   *   syms ::= T_SYM syms                            [syms_NON_EMPTY]
+   *            <empty>                               [syms_EMPTY]
    *)
 
 
@@ -237,6 +252,9 @@ structure Parser =  struct
 
   fun expect_RARROW (T_RARROW::ts) = SOME ts
     | expect_RARROW _ = NONE
+
+  fun expect_QUOTE (T_QUOTE::ts) = SOME ts
+    | expect_QUOTE _ = NONE
 
   fun parse_expr ts =
     (case parse_expr_EQUAL ts
@@ -300,18 +318,21 @@ structure Parser =  struct
                 of NONE =>
                    (case parse_aterm_SYM ts
                      of NONE =>
-                        (case parse_aterm_FUN ts
-                          of NONE =>
-                             (case parse_aterm_PARENS ts
-                               of NONE =>
-                                  (case parse_aterm_IF ts
-                                    of NONE =>
-                                       (case parse_aterm_LET ts
-                                         of NONE => parse_aterm_LET_FUN ts
-                                          | s => s)
-                                     | s => s)
-                                | s => s)
-                           | s => s)
+                      (case parse_aterm_STRING ts
+                        of NONE =>
+                          (case parse_aterm_FUN ts
+                            of NONE =>
+                               (case parse_aterm_PARENS ts
+                                 of NONE =>
+                                    (case parse_aterm_IF ts
+                                      of NONE =>
+                                         (case parse_aterm_LET ts
+                                           of NONE => parse_aterm_LET_FUN ts
+                                            | s => s)
+                                       | s => s)
+                                  | s => s)
+                             | s => s)
+                         | s => s)
                       | s => s)
                  | s => s)
             | s => s)
@@ -336,6 +357,16 @@ structure Parser =  struct
     (case expect_SYM ts
       of NONE => NONE
        | SOME (s,ts) => SOME (I.MExpr ((I.EIdent s), []),ts))
+
+  and parse_aterm_STRING ts =
+    (case expect_QUOTE ts
+      of NONE => NONE
+       | SOME ts => (case parse_syms ts
+        of NONE => NONE
+        | SOME (syms, ts) => (case expect_QUOTE ts
+          of NONE => NONE
+          | SOME ts =>
+            SOME (I.MTerm(I.VString(stringJoin syms " ")), ts))))
 
   and parse_aterm_FUN ts =
     (case expect_BACKSLASH ts
@@ -441,6 +472,21 @@ structure Parser =  struct
             | SOME (ats,ts) => SOME (at::ats,ts)))
 
   and parse_aterm_list_EMPTY ts = SOME ([], ts)
+
+  and parse_syms ts =
+    (case parse_syms_NON_EMPTY ts
+      of NONE => parse_syms_EMPTY ts
+       | s => s)
+
+  and parse_syms_NON_EMPTY ts =
+    (case expect_SYM ts
+      of NONE => NONE
+       | SOME (sym,ts) =>
+         (case parse_syms ts
+           of NONE => NONE
+            | SOME (syms,ts) => SOME (sym::syms,ts)))
+
+  and parse_syms_EMPTY ts = SOME ([], ts)
 
 
   fun parse ts =
