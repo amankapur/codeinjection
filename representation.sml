@@ -15,6 +15,10 @@ structure InternalRepresentation = struct
            | EApp of main_expr * main_expr
            | EPrimCall2 of (value -> value -> value) * main_expr * main_expr
 
+  (* Main Expressions allow for small step evaluation 
+     MTerm is a a simple value
+     MExpr wraps the old func expr with a local env
+  *)
   and main_expr = MExpr of expr * (string * main_expr) list
                 | MTerm of value
 

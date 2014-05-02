@@ -1,4 +1,4 @@
-
+(* Default Shell to run the socket based interpreter *)
 
 structure NetShell = struct
 
@@ -23,6 +23,7 @@ structure NetShell = struct
       loop exprWithPrimitives exprWithPrimitives (is,os)
     end
 
+  (* Main loop to the find out the diff between IRs *)
   and loop savedIR currentIR (is,os) =
     (SocketIO.output (os, "STEP\n");
      SocketIO.flushOut os;
@@ -46,6 +47,8 @@ structure NetShell = struct
             then currentIR
             else loop savedIR (E.eval currentIR) (is,os))
 
+
+  (* Opens the socket, reads from socket, and then evals the input*)
   fun run sock = let
     val (is, os) = SocketIO.openSocket sock
     fun readSocket () = SocketIO.inputLine is

@@ -6,6 +6,10 @@ structure Evaluator = struct
 
   fun evalError msg = raise Evaluation msg
 
+  
+  (************** GLOBAL EVNIRONMENT  **************)
+  
+
   val globalEnv : ((string * ((I.main_expr))) list) ref = ref []
 
 (* XXX: remdups in irDiff *)
@@ -40,6 +44,11 @@ structure Evaluator = struct
     | updateGlobals ((name, SOME closure)::funcList) = (changeGlobal name closure; updateGlobals funcList)
     | updateGlobals [] = ()
 
+
+
+
+  (* Look up has been modified to check global environment first for new changes if any *)
+
   fun lookupEnv (name:string) [] = NONE
     | lookupEnv name ((n,v)::env) = (if (n = name) then (SOME v) else lookupEnv name env)
 
@@ -51,9 +60,13 @@ structure Evaluator = struct
                     | SOME v => v)
       | SOME v => v)
 
-    (* old new *)
+    
+  (* irDiff takes in the old IR as the first parameter, the new IR as the second parameter,
+     and the current function inside which we're comparing the difference. 
+     It returns a list of tuples whose first element is the function name which has
+     changed and second element is the new body of the function. 
+   *)
 
-  (* Diff functions *)
   fun irDiff (I.MTerm t1) (I.MTerm t2) currentFunc =
         if (valueEquals t1 t2) then [] else [currentFunc]
     | irDiff (I.MExpr (e1,_)) (I.MExpr (e2,_)) currentFunc = (case (e1, e2) of
@@ -123,6 +136,11 @@ structure Evaluator = struct
     | isTerminal (I.MTerm _) = true
 
 
+  (* Evaluation of a Main Expression. Implements a single step evaluation. 
+     If expression is of type MTerm, it is simply returned. Otherwise, a single
+     step of evaluation is conducted. Local environments are contained within each
+     main expression.
+  *)
   fun eval (I.MTerm t)  = I.MTerm t
     | eval (I.MExpr e) = (case e
       of (I.EIf (e, f, g), env) =>
@@ -181,13 +199,6 @@ structure Evaluator = struct
           ["\n"]))
 
 
-(*  let fun loop e =
-    if terminal (e) then get_value()
-    if is_nice_point(e):
-      check_changes
-      loop(eval e’)
-    else loop(eval e)
-*)
 
   and addToEnv fName value localEnv = (addToGlobal fName value; (fName, value)::localEnv)
 

@@ -2,8 +2,12 @@
 structure Parser =  struct
 
   (*
-   *  Wrapper around the regexp library
+   *  Modifications here from func =>
+      The parse function now returns a main expression (either a MTerm or an MExpr). 
+      For MExprs, empty envs are initialized (since at this point, evaluation has begun).
    *)
+
+  
 
   structure R = RegExpFn (structure P = AwkSyntax structure E = DfaEngine)
 
