@@ -57,6 +57,7 @@ structure NetShell = struct
         (case readSocket ()
           of NONE => ()
            | SOME "\f\n" => (Socket.close sock)
+           | SOME "\n" => read ()
            | SOME str => eval_print str)
     
     and eval_print str =
@@ -69,7 +70,8 @@ structure NetShell = struct
          in
            read ()
          end
-         handle P.Parsing msg => (pr ["Parsing error:", msg, ": ", str]; read ())
+         handle P.Parsing "" => read ()
+              | P.Parsing msg => (pr ["Parsing error:", msg, ": ", str]; read ())
               | E.Evaluation msg => (pr ["Evaluation error:", msg]; read ()))
   in
     read ()
